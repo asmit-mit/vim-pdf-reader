@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/event_bus.h"
-#include "widget.h"
+#include "ui/widget.h"
 
 namespace ui {
 

@@ -1,12 +1,11 @@
 #pragma once
 
-#include <cstdint>
-
 #include "SFML/Graphics.hpp"
 
 #include "core/command_processor.h"
 #include "core/event_bus.h"
 #include "ui/cmdline.h"
+#include "ui/pdf_view.h"
 #include "ui/toolbar.h"
 
 class App {
@@ -28,6 +27,7 @@ private:
 
   ui::Cmdline cmdline_;
   ui::Toolbar toolbar_;
+  ui::PDFView pdf_view_;
 
   const unsigned int res_x_ = 640;
   const unsigned int res_y_ = 480;

@@ -22,6 +22,10 @@ Toolbar::Toolbar(const sf::Font &font, core::EventBus &event_bus)
   event_bus_.subscribe<bool>("cmdline.visible", [this](bool visible) {
     cmdline_visible_ = visible;
   });
+
+  event_bus_.subscribe<std::string>("toolbar.pdf_path", [this](const std::string &filepath) {
+    text_ = filepath;
+  });
 }
 
 void Toolbar::draw(sf::RenderTarget &window) const {

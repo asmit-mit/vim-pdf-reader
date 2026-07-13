@@ -7,7 +7,8 @@ App::App()
           "/home/asmitpaul/.local/share/fonts/"
           "JetBrainsMonoNerdFont-Light.ttf"
       ),
-      cmd_processor_(event_bus_), cmdline_(font_, event_bus_), toolbar_(font_, event_bus_) {
+      cmd_processor_(event_bus_), cmdline_(font_, event_bus_), toolbar_(font_, event_bus_),
+      pdf_view_(event_bus_) {
   window_ = sf::
       RenderWindow(sf::VideoMode({res_x_, res_y_}), "Vim PDF Reader", (sf::Style::Resize + sf::Style::Close));
   window_.setFramerateLimit(fps_);
@@ -25,12 +26,14 @@ void App::run() {
 
     cmdline_.update();
     toolbar_.update();
+    pdf_view_.update();
 
     window_.clear(utils::hexToRGB(settings::bg_));
-
     window_.setView(view_);
+
     cmdline_.draw(window_);
     toolbar_.draw(window_);
+    pdf_view_.draw(window_);
 
     window_.display();
   }
@@ -49,8 +52,11 @@ void App::processEvents() {
 
       cmdline_.onResize(view_.getSize());
       toolbar_.onResize(view_.getSize());
+      pdf_view_.onResize(view_.getSize());
     }
 
     cmdline_.handleEvent(*event);
+    toolbar_.handleEvent(*event);
+    pdf_view_.handleEvent(*event);
   }
 }

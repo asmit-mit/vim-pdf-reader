@@ -1,3 +1,4 @@
+#include <print>
 #include <sstream>
 #include <vector>
 
@@ -29,12 +30,15 @@ void CommandProcessor::runCommand(const std::string &cmd) {
     return;
   }
 
-  int required_arg_count = commands_[argv[0]];
+  unsigned long required_arg_count = commands_[argv[0]];
   if (argv.size() != required_arg_count) {
     event_bus_
         .emit("status.msg", "Provided " + std::to_string(argv.size() - 1) + " argument(s), but required " + std::to_string(required_arg_count - 1));
     return;
   }
+
+  if (argv[0] == "open")
+    event_bus_.emit("cmd_processor.open_document", argv[1]);
 }
 
 } // namespace core
