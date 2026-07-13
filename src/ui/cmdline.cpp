@@ -1,104 +1,127 @@
+#include "SFML/Window/Keyboard.hpp"
+
 #include "ui/cmdline.h"
+#include "ui/cursor.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
-#include <SFML/Window/Keyboard.hpp>
 
 namespace ui {
 
-Cmdline::Cmdline(const sf::Font &font) : font_(font), display_text_(font_, ":", 16) {
-  is_enabled_ = false;
-  cursor_visible_ = false;
+Cmdline::Cmdline(const sf::Font &font, core::EventBus &event_bus)
+    : event_bus_(event_bus), font_(font), cursor_(event_bus_), display_text_(font_, ":", 16) {
+  state_ = CmdlineState::Hidden;
+
+  curr_x_ = 0.f;
+  curr_y_ = 0.f;
 
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
   display_area_.setSize({200.0, height_});
 
-  cursor_.setFillColor(utils::hexToRGB(settings::fg_));
-  cursor_.setSize({2, height_});
-
   display_text_.setFillColor(utils::hexToRGB(settings::fg_));
+
+  event_bus_.subscribe<std::string>("status.msg", [this](const std::string &msg) {
+    text_ = msg;
+    state_ = CmdlineState::Status;
+  });
 }
 
 void Cmdline::draw(sf::RenderTarget &window) const {
-  if (!is_enabled_)
+  if (state_ == CmdlineState::Hidden)
     return;
 
   window.draw(display_area_);
   window.draw(display_text_);
-
-  if (cursor_visible_)
-    window.draw(cursor_);
+  cursor_.draw(window);
 }
 
 void Cmdline::update() {
-  if (!is_enabled_)
+  if (state_ == CmdlineState::Hidden) {
+    event_bus_.emit("cmdline.visible", false);
     return;
+  }
+
+  event_bus_.emit("cmdline.visible", true);
 
   display_text_.setString(text_ + " ");
 
-  const auto text_bounds = display_text_.getLocalBounds();
-  cursor_.setOrigin({
-      text_bounds.position.x,
-      text_bounds.position.y + text_bounds.size.y / 2.f,
-  });
-  cursor_.setPosition({
-      text_bounds.position.x + text_bounds.size.x,
-      display_area_.getGlobalBounds().getCenter().y,
-  });
+  display_area_.setPosition({curr_x_, curr_y_});
+  display_text_.setPosition({utils::padding, display_area_.getGlobalBounds().getCenter().y});
 
-  const auto elapsed = cursor_clock_.getElapsedTime();
-  if (elapsed < typing_delay_) {
-    cursor_visible_ = true;
-  } else {
-    const auto blinkTime = elapsed - typing_delay_;
-    cursor_visible_ = (blinkTime.asMilliseconds() / blink_interval_.asMilliseconds()) % 2 == 0;
-  }
+  const auto text_bounds = display_text_.getLocalBounds();
+  cursor_.update();
+  cursor_.setPosition(
+      {text_bounds.position.x + text_bounds.size.x, display_area_.getGlobalBounds().getCenter().y}
+  );
 }
 
 void Cmdline::handleEvent(const sf::Event &event) {
-  if (const auto *key = event.getIf<sf::Event::KeyPressed>()) {
-    if (!is_enabled_) {
+  const auto *key = event.getIf<sf::Event::KeyPressed>();
+  const auto *text = event.getIf<sf::Event::TextEntered>();
+
+  if (key) {
+    if (state_ == CmdlineState::Hidden) {
+      cursor_.stop();
+
       if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
-        is_enabled_ = true;
+        state_ = CmdlineState::Edit;
         text_.clear();
-        cursor_clock_.restart();
+        cursor_.start();
       }
+
       return;
     }
 
-    if (key->code == sf::Keyboard::Key::Escape) {
-      is_enabled_ = false;
-      cursor_visible_ = false;
-    } else if (key->code == sf::Keyboard::Key::Backspace && key->control) {
-      handleSpecialBackspace();
-      cursor_clock_.restart();
-    } else if (key->code == sf::Keyboard::Key::Backspace) {
-      if (text_.size() > 1) {
-        text_.pop_back();
-        cursor_clock_.restart();
+    if (state_ == CmdlineState::Status) {
+      cursor_.stop();
+
+      if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
+        state_ = CmdlineState::Edit;
+        text_.clear();
+        cursor_.start();
+      } else if (key->code == sf::Keyboard::Key::Escape)
+        state_ = CmdlineState::Hidden;
+
+      return;
+    }
+
+    if (state_ == CmdlineState::Edit) {
+      cursor_.start();
+
+      if (key->code == sf::Keyboard::Key::Escape) {
+        state_ = CmdlineState::Hidden;
+        cursor_.stop();
+      } else if (key->code == sf::Keyboard::Key::Enter) {
+        state_ = CmdlineState::Hidden;
+        event_bus_.emit("cmdline.cmd", text_);
+        cursor_.stop();
+      } else if (key->code == sf::Keyboard::Key::Backspace && key->control) {
+        handleSpecialBackspace();
+      } else if (key->code == sf::Keyboard::Key::Backspace) {
+        if (text_.size() > 1)
+          text_.pop_back();
       }
+
+      return;
     }
   }
 
-  if (!is_enabled_)
-    return;
-
-  if (const auto *text = event.getIf<sf::Event::TextEntered>()) {
+  if (text && state_ == CmdlineState::Edit) {
     if (text->unicode >= 32 && text->unicode < 127) {
       text_.push_back(static_cast<char>(text->unicode));
-      cursor_clock_.restart();
+      event_bus_.emit("general.typing", true);
     }
+    return;
   }
 }
 
 void Cmdline::onResize(const sf::Vector2f &size) {
+  curr_x_ = 0.f;
+  curr_y_ = size.y - height_;
+
   display_area_.setSize({size.x, height_});
-  display_area_.setPosition({0.0, size.y - height_});
 
   const auto text_bounds = display_text_.getLocalBounds();
-  display_text_.setOrigin(
-      {text_bounds.position.x, text_bounds.position.y + text_bounds.size.y / 2.f}
-  );
-  display_text_.setPosition({utils::padding, display_area_.getGlobalBounds().getCenter().y});
+  display_text_.setOrigin({text_bounds.position.x, text_bounds.getCenter().y});
 }
 
 void Cmdline::handleSpecialBackspace() {

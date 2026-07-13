@@ -4,6 +4,13 @@ project_name = meson.project_name()
 sfml_dep = dependency('sfml-graphics', required: true)
 
 includes = include_directories('include')
-sources = files(['src/main.cpp', 'src/app.cpp', 'src/ui/cmdline.cpp'])
+sources = files(
+  'src/app.cpp',
+  'src/main.cpp',
+  'src/ui/cmdline.cpp',
+  'src/ui/toolbar.cpp',
+  'src/ui/cursor.cpp',
+  'src/core/command_processor.cpp',
+)
 
 executable(project_name, sources, include_directories: includes, dependencies: sfml_dep)

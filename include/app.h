@@ -3,7 +3,11 @@
 #include <cstdint>
 
 #include "SFML/Graphics.hpp"
+
+#include "core/command_processor.h"
+#include "core/event_bus.h"
 #include "ui/cmdline.h"
+#include "ui/toolbar.h"
 
 class App {
 public:
@@ -19,7 +23,11 @@ private:
   sf::View view_;
   sf::Font font_;
 
-  ui::Cmdline cmdline;
+  core::EventBus event_bus_;
+  core::CommandProcessor cmd_processor_;
+
+  ui::Cmdline cmdline_;
+  ui::Toolbar toolbar_;
 
   const unsigned int res_x_ = 640;
   const unsigned int res_y_ = 480;
