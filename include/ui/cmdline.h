@@ -3,7 +3,7 @@
 #include "core/cmd_history.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
-#include "ui/cursor.h"
+#include "ui/textbox.h"
 #include "ui/widget.h"
 
 namespace ui {
@@ -34,16 +34,13 @@ private:
   core::CmdHistory &cmd_history_;
   const sf::Font &font_;
 
+  sf::Text label_;
+  ui::Textbox textbox_;
   sf::RectangleShape display_area_;
-  sf::Text display_text_;
-  ui::Cursor cursor_;
-
-  std::string text_;
   CmdlineState state_;
 
-  static constexpr float height_ = 24.0;
-
   float curr_x_, curr_y_;
+  static constexpr float height_ = 24.0;
 };
 
 } // namespace ui

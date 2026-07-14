@@ -17,6 +17,7 @@ sources = files(
   'src/ui/cursor.cpp',
   'src/ui/toolbar.cpp',
   'src/ui/pdf_view.cpp',
+  'src/ui/textbox.cpp',
 )
 
 executable(

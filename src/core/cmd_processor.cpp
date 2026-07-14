@@ -12,7 +12,7 @@ CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
 }
 
 void CmdProcessor::runCommand(const std::string &cmd) {
-  std::istringstream iss(cmd.substr(1));
+  std::istringstream iss(cmd);
 
   std::vector<std::string> argv;
   std::string arg;

@@ -8,9 +8,6 @@ Cursor::Cursor(core::EventBus &event_bus, const std::string &typing_event) : eve
   cursor_.setSize({2.f, 24.f});
   cursor_.setFillColor(utils::hexToRGB(settings::fg_));
 
-  const auto bounds = cursor_.getLocalBounds();
-  cursor_.setOrigin(bounds.getCenter());
-
   event_bus_.subscribe<bool>(typing_event, [this](bool) {
     if (!blinking_)
       return;

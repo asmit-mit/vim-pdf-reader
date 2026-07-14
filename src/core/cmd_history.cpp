@@ -37,20 +37,20 @@ void CmdHistory::add(const std::string &cmd) {
 
 std::string CmdHistory::getNext() {
   if (history_.empty())
-    return ":";
+    return "";
 
   if (curr_idx_ < history_.size())
     curr_idx_++;
 
   if (curr_idx_ == history_.size())
-    return ":";
+    return "";
 
   return history_[curr_idx_];
 }
 
 std::string CmdHistory::getPrevious() {
   if (history_.empty())
-    return ":";
+    return "";
 
   if (curr_idx_ > 0)
     curr_idx_--;
