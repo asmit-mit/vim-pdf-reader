@@ -7,13 +7,14 @@ namespace ui {
 
 class Cursor : public Widget {
 public:
-  explicit Cursor(core::EventBus &event_bus);
+  explicit Cursor(core::EventBus &event_bus, const std::string &typing_event);
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
   void handleEvent(const sf::Event &) override {}
 
   void setPosition(const sf::Vector2f &position);
+  void setSize(const sf::Vector2f &position);
 
   void start();
   void stop();

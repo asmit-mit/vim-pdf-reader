@@ -1,22 +1,17 @@
-#include <print>
 #include <sstream>
 #include <vector>
 
-#include "core/command_processor.h"
+#include "core/cmd_processor.h"
 
 namespace core {
 
-CommandProcessor::CommandProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
+CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
   commands_["open"] = 2;
   commands_["close"] = 1;
   commands_["quit"] = 1;
-
-  event_bus_.subscribe<std::string>("cmdline.cmd", [this](const std::string &cmd) {
-    runCommand(cmd);
-  });
 }
 
-void CommandProcessor::runCommand(const std::string &cmd) {
+void CmdProcessor::runCommand(const std::string &cmd) {
   std::istringstream iss(cmd.substr(1));
 
   std::vector<std::string> argv;

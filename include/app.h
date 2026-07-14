@@ -2,7 +2,8 @@
 
 #include "SFML/Graphics.hpp"
 
-#include "core/command_processor.h"
+#include "core/cmd_history.h"
+#include "core/cmd_processor.h"
 #include "core/event_bus.h"
 #include "ui/cmdline.h"
 #include "ui/pdf_view.h"
@@ -23,7 +24,8 @@ private:
   sf::Font font_;
 
   core::EventBus event_bus_;
-  core::CommandProcessor cmd_processor_;
+  core::CmdProcessor cmd_processor_;
+  core::CmdHistory cmd_history_;
 
   ui::Cmdline cmdline_;
   ui::Toolbar toolbar_;

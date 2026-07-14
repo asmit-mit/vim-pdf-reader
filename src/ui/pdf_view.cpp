@@ -6,6 +6,9 @@
 namespace ui {
 PDFView::PDFView(core::EventBus &event_bus)
     : renderer_(document_), event_bus_(event_bus), sprite_(sf::Sprite(texture_)) {
+  curr_x_ = 0.f;
+  curr_y_ = 0.f;
+
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
         try {
@@ -17,6 +20,9 @@ PDFView::PDFView(core::EventBus &event_bus)
           texture_ = renderer_.render(current_page_, zoom_);
           sprite_.setTexture(texture_, true);
           event_bus_.emit("toolbar.pdf_path", filepath);
+          event_bus_.emit("toolbar.page_number", 0);
+          event_bus_.emit("toolbar.total_pages", document_.size());
+          event_bus_.emit("toolbar.page_zoom", zoom_);
 
         } catch (const std::runtime_error &e) {
           has_document_ = false;
@@ -42,7 +48,16 @@ void PDFView::draw(sf::RenderTarget &window) const {
 }
 
 void PDFView::update() {
+  if (!has_document_)
+    return;
+
   setZoom(zoom_);
+  const auto bounds = sprite_.getLocalBounds();
+  sprite_.setOrigin({bounds.getCenter().x, bounds.position.y});
+  sprite_.setPosition({curr_x_, curr_y_});
+
+  event_bus_.emit("toolbar.page_number", current_page_);
+  event_bus_.emit("toolbar.page_zoom", zoom_);
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
@@ -58,6 +73,6 @@ void PDFView::handleEvent(const sf::Event &event) {
 }
 
 void PDFView::onResize(const sf::Vector2f &size) {
-  sprite_.setPosition({0, 0});
+  curr_x_ = size.x / 2.f;
 }
 } // namespace ui

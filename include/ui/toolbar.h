@@ -16,18 +16,22 @@ public:
   void onResize(const sf::Vector2f &size);
 
 private:
-  std::string text_;
   const sf::Font &font_;
-  bool cmdline_visible_;
-
-  static constexpr float height_ = 24.0;
-
-  float curr_x_, curr_y_;
+  sf::RectangleShape display_area_;
+  sf::Text display_filepath_;
+  sf::Text display_page_num_;
+  sf::Text display_zoom_;
 
   core::EventBus &event_bus_;
 
-  sf::RectangleShape display_area_;
-  sf::Text display_text_;
+  std::string filepath_;
+  std::size_t page_idx_;
+  std::size_t total_pages_;
+  float page_zoom_;
+  bool cmdline_visible_;
+  float curr_x_, curr_y_;
+
+  static constexpr float height_ = 24.0;
 };
 
 } // namespace ui

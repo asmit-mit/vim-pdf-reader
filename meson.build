@@ -7,7 +7,8 @@ mupdf_dep = dependency('mupdf', required: true)
 includes = include_directories('include')
 sources = files(
   'src/app.cpp',
-  'src/core/command_processor.cpp',
+  'src/core/cmd_processor.cpp',
+  'src/core/cmd_history.cpp',
   'src/main.cpp',
   'src/pdf/pdf_document.cpp',
   'src/pdf/pdf_page.cpp',

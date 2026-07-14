@@ -6,11 +6,10 @@
 
 namespace core {
 
-class CommandProcessor {
+class CmdProcessor {
 public:
-  CommandProcessor(core::EventBus &event_bus);
+  CmdProcessor(core::EventBus &event_bus);
 
-private:
   void runCommand(const std::string &cmd);
 
 private:

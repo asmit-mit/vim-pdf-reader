@@ -15,8 +15,8 @@ public:
   void draw(sf::RenderTarget &window) const;
   void update();
   void handleEvent(const sf::Event &event);
-  void onResize(const sf::Vector2f &size);
 
+  void onResize(const sf::Vector2f &size);
   void setZoom(float zoom);
 
 private:
@@ -30,6 +30,7 @@ private:
   bool has_document_ = false;
   std::size_t current_page_ = 0;
 
+  float curr_x_, curr_y_;
   float zoom_ = 1.f;
 
   static constexpr float min_zoom_ = 0.2f;
