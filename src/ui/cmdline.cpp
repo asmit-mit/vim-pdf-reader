@@ -54,16 +54,18 @@ void Cmdline::update() {
 
   event_bus_.emit("cmdline.visible", true);
 
-  display_area_.setPosition({curr_x_, curr_y_});
-  label_.setPosition({utils::padding - 4.f, curr_y_});
+  float round_y = std::round(curr_y_) + 1.f;
+
+  display_area_.setPosition({curr_x_, round_y});
+  label_.setPosition({utils::padding - 4.f, round_y});
 
   if (state_ == CmdlineState::Status) {
     label_.setString("");
-    textbox_.setPosition({utils::padding - 1.f, curr_y_});
+    textbox_.setPosition({utils::padding - 1.f, round_y});
   } else {
     label_.setString(":");
     const auto bounds = label_.getGlobalBounds();
-    textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, curr_y_});
+    textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, round_y});
   }
 
   textbox_.update();

@@ -41,9 +41,7 @@ Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
     total_pages_ = total_pages;
   });
 
-  event_bus_.subscribe<float>("toolbar.page_zoom", [this](float zoom) {
-    page_zoom_ = zoom;
-  });
+  event_bus_.subscribe<float>("toolbar.page_zoom", [this](float zoom) { page_zoom_ = zoom; });
 }
 
 void Statusbar::draw(sf::RenderTarget &window) const {
@@ -62,21 +60,27 @@ void Statusbar::update() {
   );
   display_zoom_.setString("[" + std::to_string((int)(page_zoom_ * 100)) + "%]");
 
-  float y = curr_y_;
+  float y = std::round(curr_y_);
 
   if (cmdline_visible_)
     y -= height_;
 
   display_area_.setPosition({curr_x_, y});
-  display_filepath_.setPosition({utils::padding, display_area_.getGlobalBounds().getCenter().y});
+
+  const float round_y = display_area_.getGlobalBounds().getCenter().y;
+  display_filepath_.setPosition({utils::padding, round_y});
 
   const auto display_area_bounds = display_area_.getLocalBounds();
-  const float page_num_x = display_area_bounds.position.x + display_area_bounds.size.x -
-                           display_page_num_.getLocalBounds().size.x - utils::padding;
-  const float zoom_x = page_num_x - display_zoom_.getLocalBounds().size.x - utils::padding;
+  const float page_num_x = std::round(
+      display_area_bounds.position.x + display_area_bounds.size.x -
+      display_page_num_.getLocalBounds().size.x - utils::padding
+  );
+  const float zoom_x = std::round(
+      page_num_x - display_zoom_.getLocalBounds().size.x - utils::padding
+  );
 
-  display_page_num_.setPosition({page_num_x, display_area_.getGlobalBounds().getCenter().y});
-  display_zoom_.setPosition({zoom_x, display_area_.getGlobalBounds().getCenter().y});
+  display_page_num_.setPosition({page_num_x, round_y});
+  display_zoom_.setPosition({zoom_x, round_y});
 }
 
 void Statusbar::handleEvent(const sf::Event &event) {}

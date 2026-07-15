@@ -43,12 +43,12 @@ const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rot
 
   sf::Image image({static_cast<unsigned>(width), static_cast<unsigned>(height)}, rgba.data());
 
-  if (!image.saveToFile("mupdf_test.png")) {
-    fz_drop_pixmap(ctx, pix);
-    throw std::runtime_error("Failed to save image");
-  }
+  // if (!image.saveToFile("mupdf_test.png")) {
+  //   fz_drop_pixmap(ctx, pix);
+  //   throw std::runtime_error("Failed to save image");
+  // }
 
-  if (!texture_.loadFromFile("mupdf_test.png")) {
+  if (!texture_.loadFromImage(image)) {
     fz_drop_pixmap(ctx, pix);
     throw std::runtime_error("Failed to load texture from image");
   }

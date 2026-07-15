@@ -1,4 +1,3 @@
-#include <iostream>
 #include <stdexcept>
 
 #include "ui/pdf_view.h"
@@ -22,6 +21,10 @@ PDFView::PDFView(core::EventBus &event_bus)
 
           texture_ = renderer_.render(current_page_, zoom_);
           sprite_.setTexture(texture_, true);
+          event_bus_.emit("toolbar.pdf_path", filepath);
+          event_bus_.emit("toolbar.page_number", 0);
+          event_bus_.emit("toolbar.total_pages", document_.size());
+          event_bus_.emit("toolbar.page_zoom", zoom_);
 
         } catch (const std::runtime_error &e) {
           has_document_ = false;
@@ -35,14 +38,13 @@ PDFView::PDFView(core::EventBus &event_bus)
 }
 
 void PDFView::setZoom(float zoom) {
-  zoom_ = std::clamp(zoom, min_zoom_, max_zoom_);
-
   if (!has_document_)
     return;
 
+  zoom_ = std::clamp(zoom, min_zoom_, max_zoom_);
+
   texture_ = renderer_.render(current_page_, zoom_);
   sprite_.setTexture(texture_, true);
-  std::cout << texture_.getSize().x << " " << texture_.getSize().y << std::endl;
 }
 
 void PDFView::draw(sf::RenderTarget &window) const {
@@ -61,13 +63,11 @@ void PDFView::update() {
   }
 
   const auto bounds = sprite_.getLocalBounds();
-  sprite_.setOrigin({bounds.getCenter().x, bounds.position.y});
-
-  curr_x_ = page_size_.x / 2.f;
+  curr_x_ = (page_size_.x - bounds.size.x) / 2.f;
   if (bounds.size.y < page_size_.y)
     curr_y_ = (page_size_.y - bounds.size.y) / 2.f;
 
-  sprite_.setPosition({curr_x_, curr_y_});
+  sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
 
   event_bus_.emit("toolbar.page_number", current_page_);
   event_bus_.emit("toolbar.page_zoom", zoom_);

@@ -30,6 +30,7 @@ App::App()
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     focus_ = focus;
   });
+
 }
 
 void App::run() {
