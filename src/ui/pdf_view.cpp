@@ -1,10 +1,11 @@
-#include <algorithm>
 #include <stdexcept>
 
 #include "ui/pdf_view.h"
 #include "ui/ui_elements.h"
+#include "utils/utils.h"
 
 namespace ui {
+
 PDFView::PDFView(core::EventBus &event_bus)
     : renderer_(document_), event_bus_(event_bus), sprite_(sf::Sprite(texture_)) {
   curr_x_ = 0.f;
@@ -13,7 +14,7 @@ PDFView::PDFView(core::EventBus &event_bus)
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
         try {
-          document_.openDocument(filepath);
+          document_.openDocument(utils::resolvePath(filepath));
           has_document_ = true;
           current_page_ = 0;
           zoom_ = 1.f;
@@ -37,10 +38,10 @@ PDFView::PDFView(core::EventBus &event_bus)
 }
 
 void PDFView::setZoom(float zoom) {
-  zoom_ = std::clamp(zoom, min_zoom_, max_zoom_);
-
   if (!has_document_)
     return;
+
+  zoom_ = std::clamp(zoom, min_zoom_, max_zoom_);
 
   texture_ = renderer_.render(current_page_, zoom_);
   sprite_.setTexture(texture_, true);
@@ -62,13 +63,11 @@ void PDFView::update() {
   }
 
   const auto bounds = sprite_.getLocalBounds();
-  sprite_.setOrigin({bounds.getCenter().x, bounds.position.y});
-
-  curr_x_ = page_size_.x / 2.f;
+  curr_x_ = (page_size_.x - bounds.size.x) / 2.f;
   if (bounds.size.y < page_size_.y)
     curr_y_ = (page_size_.y - bounds.size.y) / 2.f;
 
-  sprite_.setPosition({curr_x_, curr_y_});
+  sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
 
   event_bus_.emit("toolbar.page_number", current_page_);
   event_bus_.emit("toolbar.page_zoom", zoom_);

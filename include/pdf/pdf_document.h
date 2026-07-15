@@ -22,6 +22,8 @@ public:
 private:
   fz_context *ctx_;
   fz_document *doc_;
+
+  std::size_t page_count_;
 };
 
 } // namespace pdf

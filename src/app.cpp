@@ -11,8 +11,11 @@ App::App()
       ),
       cmd_processor_(event_bus_), cmdline_(font_, event_bus_, cmd_processor_, cmd_history_),
       statusbar_(font_, event_bus_), pdf_view_(event_bus_) {
+  sf::ContextSettings settings;
+  settings.antiAliasingLevel = 8;
+
   window_ = sf::
-      RenderWindow(sf::VideoMode({res_x_, res_y_}), "Vim PDF Reader", (sf::Style::Resize + sf::Style::Close));
+      RenderWindow(sf::VideoMode({res_x_, res_y_}), "Vim PDF Reader", (sf::Style::Resize + sf::Style::Close), sf::State::Windowed, settings);
   focus_ = ui::UIElements::PDFView;
 
   window_.setFramerateLimit(fps_);
@@ -27,6 +30,7 @@ App::App()
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     focus_ = focus;
   });
+
 }
 
 void App::run() {

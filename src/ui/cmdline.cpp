@@ -54,16 +54,18 @@ void Cmdline::update() {
 
   event_bus_.emit("cmdline.visible", true);
 
-  display_area_.setPosition({curr_x_, curr_y_});
-  label_.setPosition({utils::padding - 4.f, curr_y_});
+  float round_y = std::round(curr_y_) + 1.f;
+
+  display_area_.setPosition({curr_x_, round_y});
+  label_.setPosition({utils::padding - 4.f, round_y});
 
   if (state_ == CmdlineState::Status) {
     label_.setString("");
-    textbox_.setPosition({utils::padding - 1.f, curr_y_});
+    textbox_.setPosition({utils::padding - 1.f, round_y});
   } else {
     label_.setString(":");
     const auto bounds = label_.getGlobalBounds();
-    textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, curr_y_});
+    textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, round_y});
   }
 
   textbox_.update();
@@ -84,6 +86,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
 
   if (key) {
     if (state_ == CmdlineState::Status) {
+      label_.setString("");
       textbox_.stopEditing();
 
       if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
@@ -92,23 +95,24 @@ void Cmdline::handleEvent(const sf::Event &event) {
         textbox_.startEditing();
         ignore_next_text_entered_ = true;
       } else if (key->code == sf::Keyboard::Key::Escape) {
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         cmd_history_.reset();
         textbox_.reset();
         textbox_.stopEditing();
-        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       }
 
       return;
     }
 
     if (state_ == CmdlineState::Edit) {
+      label_.setString(":");
       textbox_.startEditing();
 
       if (key->code == sf::Keyboard::Key::Escape) {
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         cmd_history_.reset();
         textbox_.reset();
         textbox_.stopEditing();
-        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::Enter) {
         cmd_history_.add(textbox_.getText());
         try {

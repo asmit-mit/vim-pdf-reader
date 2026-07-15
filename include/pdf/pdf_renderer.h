@@ -10,9 +10,11 @@ class PDFRenderer {
 public:
   explicit PDFRenderer(PDFDocument &document);
 
-  sf::Texture render(std::size_t page_idx, float zoom = 1.f);
+  const sf::Texture &render(std::size_t page_idx, float zoom = 1.f, int rotate = 0);
 
 private:
+  sf::Texture texture_;
+
   PDFDocument &document_;
 };
 

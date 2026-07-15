@@ -1,58 +1,60 @@
-#include "pdf/pdf_renderer.h"
-
+#include <iostream>
 #include <stdexcept>
+
+#include "pdf/pdf_renderer.h"
 
 namespace pdf {
 
 PDFRenderer::PDFRenderer(PDFDocument &document) : document_(document) {}
 
-sf::Texture PDFRenderer::render(std::size_t page_idx, float zoom) {
+const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rotate) {
   auto *ctx = document_.getCtx();
   auto *doc = document_.getDoc();
 
   if (page_idx >= document_.size())
     throw std::out_of_range("Page index out of range");
 
-  fz_page *page = nullptr;
-  fz_pixmap *pixmap = nullptr;
-  fz_device *device = nullptr;
-  sf::Texture texture;
+  fz_matrix ctm = fz_scale(zoom, zoom);
+  ctm = fz_pre_rotate(ctm, rotate);
 
-  fz_try(ctx) {
-    page = fz_load_page(ctx, doc, static_cast<int>(page_idx));
-
-    fz_matrix matrix = fz_scale(zoom, zoom);
-    fz_rect bounds = fz_bound_page(ctx, page);
-    bounds = fz_transform_rect(bounds, matrix);
-
-    fz_irect bbox = fz_round_rect(bounds);
-    pixmap = fz_new_pixmap_with_bbox(ctx, fz_device_rgb(ctx), bbox, nullptr, 1);
-    fz_clear_pixmap_with_value(ctx, pixmap, 255);
-
-    device = fz_new_draw_device(ctx, matrix, pixmap);
-    fz_run_page(ctx, page, device, fz_identity, nullptr);
-    fz_close_device(ctx, device);
-
-    if (!texture.resize(
-            {static_cast<unsigned int>(fz_pixmap_width(ctx, pixmap)),
-             static_cast<unsigned int>(fz_pixmap_height(ctx, pixmap))}
-        )) {
-      throw std::runtime_error("Failed to create texture");
-    }
-    texture.update(fz_pixmap_samples(ctx, pixmap));
-  }
-  fz_always(ctx) {
-    if (device)
-      fz_drop_device(ctx, device);
-    if (pixmap)
-      fz_drop_pixmap(ctx, pixmap);
-    if (page)
-      fz_drop_page(ctx, page);
-  }
+  fz_pixmap *pix;
+  fz_try(ctx) pix = fz_new_pixmap_from_page_number(ctx, doc, page_idx, ctm, fz_device_rgb(ctx), 0);
   fz_catch(ctx) {
-    throw std::runtime_error("Failed to render PDF page");
+    fprintf(stderr, "Failed to render page");
   }
-  return texture;
+
+  int width = fz_pixmap_width(ctx, pix);
+  int height = fz_pixmap_height(ctx, pix);
+  int stride = fz_pixmap_stride(ctx, pix);
+  unsigned char *samples = fz_pixmap_samples(ctx, pix);
+
+  std::vector<std::uint8_t> rgba(width * height * 4);
+
+  for (int y = 0; y < height; ++y) {
+    const unsigned char *src = samples + y * stride;
+
+    for (int x = 0; x < width; ++x) {
+      rgba[(y * width + x) * 4 + 0] = src[x * 3 + 0]; // R
+      rgba[(y * width + x) * 4 + 1] = src[x * 3 + 1]; // G
+      rgba[(y * width + x) * 4 + 2] = src[x * 3 + 2]; // B
+      rgba[(y * width + x) * 4 + 3] = 255;            // A
+    }
+  }
+
+  sf::Image image({static_cast<unsigned>(width), static_cast<unsigned>(height)}, rgba.data());
+
+  // if (!image.saveToFile("mupdf_test.png")) {
+  //   fz_drop_pixmap(ctx, pix);
+  //   throw std::runtime_error("Failed to save image");
+  // }
+
+  if (!texture_.loadFromImage(image)) {
+    fz_drop_pixmap(ctx, pix);
+    throw std::runtime_error("Failed to load texture from image");
+  }
+
+  fz_drop_pixmap(ctx, pix);
+  return texture_;
 }
 
 } // namespace pdf
