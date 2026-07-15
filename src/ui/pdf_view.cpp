@@ -54,6 +54,11 @@ void PDFView::update() {
   setZoom(zoom_);
   const auto bounds = sprite_.getLocalBounds();
   sprite_.setOrigin({bounds.getCenter().x, bounds.position.y});
+
+  curr_x_ = page_size_.x / 2.f;
+  if (bounds.size.y < page_size_.y)
+    curr_y_ = (page_size_.y - bounds.size.y) / 2.f;
+
   sprite_.setPosition({curr_x_, curr_y_});
 
   event_bus_.emit("toolbar.page_number", current_page_);
@@ -63,6 +68,7 @@ void PDFView::update() {
 void PDFView::handleEvent(const sf::Event &event) {
   if (!has_document_)
     return;
+
   if (const auto *key = event.getIf<sf::Event::KeyPressed>()) {
     if (key->code == sf::Keyboard::Key::Add || key->code == sf::Keyboard::Key::Equal)
       zoom_ += 0.2f;
@@ -73,6 +79,7 @@ void PDFView::handleEvent(const sf::Event &event) {
 }
 
 void PDFView::onResize(const sf::Vector2f &size) {
-  curr_x_ = size.x / 2.f;
+  page_size_ = size;
 }
+
 } // namespace ui
