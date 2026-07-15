@@ -84,8 +84,10 @@ void Cmdline::handleEvent(const sf::Event &event) {
       if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
         state_ = CmdlineState::Edit;
         textbox_.clear();
-      } else if (key->code == sf::Keyboard::Key::Escape)
+      } else if (key->code == sf::Keyboard::Key::Escape) {
         state_ = CmdlineState::Hidden;
+        textbox_.setCursorPosition(0);
+      }
 
       return;
     }
@@ -97,6 +99,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
       if (key->code == sf::Keyboard::Key::Escape) {
         state_ = CmdlineState::Hidden;
         cmd_history_.reset();
+        textbox_.setCursorPosition(0);
         textbox_.stopEditing();
       } else if (key->code == sf::Keyboard::Key::Enter) {
         if (textbox_.size() == 0)
@@ -104,6 +107,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
         state_ = CmdlineState::Hidden;
         cmd_history_.add(textbox_.getText());
         cmd_processor_.runCommand(textbox_.getText());
+        textbox_.setCursorPosition(0);
         textbox_.stopEditing();
       } else if (key->code == sf::Keyboard::Key::Up) {
         textbox_.setText(cmd_history_.getPrevious());

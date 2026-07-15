@@ -51,7 +51,11 @@ void PDFView::update() {
   if (!has_document_)
     return;
 
-  setZoom(zoom_);
+  if (zoom_changed_) {
+    setZoom(zoom_);
+    zoom_changed_ = false;
+  }
+
   const auto bounds = sprite_.getLocalBounds();
   sprite_.setOrigin({bounds.getCenter().x, bounds.position.y});
 
@@ -70,11 +74,13 @@ void PDFView::handleEvent(const sf::Event &event) {
     return;
 
   if (const auto *key = event.getIf<sf::Event::KeyPressed>()) {
-    if (key->code == sf::Keyboard::Key::Add || key->code == sf::Keyboard::Key::Equal)
+    if (key->code == sf::Keyboard::Key::Add || key->code == sf::Keyboard::Key::Equal) {
       zoom_ += 0.2f;
-
-    if (key->code == sf::Keyboard::Key::Subtract || key->code == sf::Keyboard::Key::Hyphen)
+      zoom_changed_ = true;
+    } else if (key->code == sf::Keyboard::Key::Subtract || key->code == sf::Keyboard::Key::Hyphen) {
       zoom_ -= 0.2f;
+      zoom_changed_ = true;
+    }
   }
 }
 

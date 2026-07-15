@@ -29,6 +29,7 @@ private:
 
   bool has_document_ = false;
   std::size_t current_page_ = 0;
+  bool zoom_changed_ = false;
 
   sf::Vector2f page_size_;
   float curr_x_, curr_y_;
