@@ -131,6 +131,11 @@ void Textbox::clear() {
   text_.clear();
 }
 
+void Textbox::reset() {
+  clear();
+  setCursorPosition(0);
+}
+
 void Textbox::setText(const std::string &text) {
   text_ = text;
 }

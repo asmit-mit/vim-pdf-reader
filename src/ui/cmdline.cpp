@@ -1,4 +1,7 @@
+#include <stdexcept>
+
 #include "ui/cmdline.h"
+#include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
 
@@ -14,6 +17,8 @@ Cmdline::Cmdline(
       label_(font, ":", 16),
       textbox_(font_, event_bus, 16, ":", "cmdline.visible", "cmdline.typing") {
   state_ = CmdlineState::Hidden;
+  should_take_input_ = false;
+  ignore_next_text_entered_ = false;
 
   curr_x_ = 0.f;
   curr_y_ = 0.f;
@@ -23,9 +28,12 @@ Cmdline::Cmdline(
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
   display_area_.setSize({200.0, height_});
 
-  event_bus_.subscribe<std::string>("status.msg", [this](const std::string &msg) {
-    textbox_.setText(msg);
-    state_ = CmdlineState::Status;
+  event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
+    should_take_input_ = focus == ui::UIElements::Cmdline;
+    state_ = should_take_input_ ? CmdlineState::Edit : CmdlineState::Hidden;
+    textbox_.clear();
+    textbox_.setCursorPosition(0);
+    textbox_.startEditing();
   });
 }
 
@@ -62,31 +70,32 @@ void Cmdline::update() {
 }
 
 void Cmdline::handleEvent(const sf::Event &event) {
+  if (!should_take_input_)
+    return;
+
+  if (ignore_next_text_entered_) {
+    if (event.is<sf::Event::TextEntered>()) {
+      ignore_next_text_entered_ = false;
+      return;
+    }
+  }
+
   const auto *key = event.getIf<sf::Event::KeyPressed>();
 
   if (key) {
-    if (state_ == CmdlineState::Hidden) {
-      textbox_.stopEditing();
-
-      if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
-        state_ = CmdlineState::Edit;
-        textbox_.clear();
-        textbox_.handleEvent(event);
-        textbox_.startEditing();
-      }
-
-      return;
-    }
-
     if (state_ == CmdlineState::Status) {
       textbox_.stopEditing();
 
       if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
         state_ = CmdlineState::Edit;
-        textbox_.clear();
+        textbox_.reset();
+        textbox_.startEditing();
+        ignore_next_text_entered_ = true;
       } else if (key->code == sf::Keyboard::Key::Escape) {
-        state_ = CmdlineState::Hidden;
-        textbox_.setCursorPosition(0);
+        cmd_history_.reset();
+        textbox_.reset();
+        textbox_.stopEditing();
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       }
 
       return;
@@ -94,30 +103,38 @@ void Cmdline::handleEvent(const sf::Event &event) {
 
     if (state_ == CmdlineState::Edit) {
       textbox_.startEditing();
-      textbox_.handleEvent(event);
 
       if (key->code == sf::Keyboard::Key::Escape) {
-        state_ = CmdlineState::Hidden;
         cmd_history_.reset();
-        textbox_.setCursorPosition(0);
+        textbox_.reset();
         textbox_.stopEditing();
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::Enter) {
-        if (textbox_.size() == 0)
-          return;
-        state_ = CmdlineState::Hidden;
         cmd_history_.add(textbox_.getText());
-        cmd_processor_.runCommand(textbox_.getText());
-        textbox_.setCursorPosition(0);
-        textbox_.stopEditing();
-      } else if (key->code == sf::Keyboard::Key::Up) {
+        try {
+          cmd_processor_.runCommand(textbox_.getText());
+          textbox_.reset();
+          textbox_.stopEditing();
+          event_bus_.emit("ui.focus", ui::UIElements::PDFView);
+        } catch (const std::runtime_error &e) {
+          state_ = CmdlineState::Status;
+          textbox_.setText(std::string(e.what()) + " (press \":\" to continue...)");
+          textbox_.setCursorPosition(textbox_.getText().size());
+          textbox_.stopEditing();
+        }
+      } else if (
+          (key->code == sf::Keyboard::Key::Up) ||
+          (key->code == sf::Keyboard::Key::P && key->control)
+      ) {
         textbox_.setText(cmd_history_.getPrevious());
         textbox_.setCursorPosition(textbox_.getText().size());
-      } else if (key->code == sf::Keyboard::Key::Down) {
+      } else if (
+          key->code == sf::Keyboard::Key::Down ||
+          (key->code == sf::Keyboard::Key::N && key->control)
+      ) {
         textbox_.setText(cmd_history_.getNext());
         textbox_.setCursorPosition(textbox_.getText().size());
       }
-
-      return;
     }
   }
 

@@ -29,6 +29,7 @@ public:
 
   std::size_t size();
   void clear();
+  void reset();
 
   void setText(const std::string &text);
   const std::string &getText() const;
@@ -36,6 +37,7 @@ public:
   void setCursorPosition(std::size_t pos);
   std::size_t getCursorPosition() const;
 
+private:
   void backspace();
   void ctrlBackspace();
   void del();

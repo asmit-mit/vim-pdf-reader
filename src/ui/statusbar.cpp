@@ -1,12 +1,12 @@
 #include "SFML/Window/Keyboard.hpp"
 
-#include "ui/toolbar.h"
+#include "ui/statusbar.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
 
 namespace ui {
 
-Toolbar::Toolbar(const sf::Font &font, core::EventBus &event_bus)
+Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
     : font_(font), display_filepath_(font_, "Nothing Open Yet", 16),
       display_page_num_(font_, "[]", 16), display_zoom_(font_, "[]", 16), event_bus_(event_bus) {
   display_area_.setFillColor(utils::hexToRGB(settings::status_bg_));
@@ -46,7 +46,7 @@ Toolbar::Toolbar(const sf::Font &font, core::EventBus &event_bus)
   });
 }
 
-void Toolbar::draw(sf::RenderTarget &window) const {
+void Statusbar::draw(sf::RenderTarget &window) const {
   window.draw(display_area_);
   window.draw(display_filepath_);
   if (total_pages_ != 0) {
@@ -55,7 +55,7 @@ void Toolbar::draw(sf::RenderTarget &window) const {
   }
 }
 
-void Toolbar::update() {
+void Statusbar::update() {
   display_filepath_.setString(filepath_);
   display_page_num_.setString(
       "[" + std::to_string(page_idx_ + 1) + "/" + std::to_string(total_pages_) + "]"
@@ -79,9 +79,9 @@ void Toolbar::update() {
   display_zoom_.setPosition({zoom_x, display_area_.getGlobalBounds().getCenter().y});
 }
 
-void Toolbar::handleEvent(const sf::Event &event) {}
+void Statusbar::handleEvent(const sf::Event &event) {}
 
-void Toolbar::onResize(const sf::Vector2f &size) {
+void Statusbar::onResize(const sf::Vector2f &size) {
   curr_x_ = 0;
   curr_y_ = size.y - height_;
 

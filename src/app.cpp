@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "app.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
@@ -8,16 +10,23 @@ App::App()
           "JetBrainsMonoNerdFont-Light.ttf"
       ),
       cmd_processor_(event_bus_), cmdline_(font_, event_bus_, cmd_processor_, cmd_history_),
-      toolbar_(font_, event_bus_), pdf_view_(event_bus_) {
+      statusbar_(font_, event_bus_), pdf_view_(event_bus_) {
   window_ = sf::
       RenderWindow(sf::VideoMode({res_x_, res_y_}), "Vim PDF Reader", (sf::Style::Resize + sf::Style::Close));
+  focus_ = ui::UIElements::PDFView;
+
   window_.setFramerateLimit(fps_);
   window_.setKeyRepeatEnabled(true);
 
   view_ = window_.getDefaultView();
 
   cmdline_.onResize(view_.getSize());
-  toolbar_.onResize(view_.getSize());
+  statusbar_.onResize(view_.getSize());
+  pdf_view_.onResize(view_.getSize());
+
+  event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
+    focus_ = focus;
+  });
 }
 
 void App::run() {
@@ -26,14 +35,14 @@ void App::run() {
 
     pdf_view_.update();
     cmdline_.update();
-    toolbar_.update();
+    statusbar_.update();
 
     window_.clear(utils::hexToRGB(settings::bg_));
     window_.setView(view_);
 
     pdf_view_.draw(window_);
     cmdline_.draw(window_);
-    toolbar_.draw(window_);
+    statusbar_.draw(window_);
 
     window_.display();
   }
@@ -51,12 +60,18 @@ void App::processEvents() {
       view_.setCenter({view_size.x / 2, view_size.y / 2});
 
       cmdline_.onResize(view_.getSize());
-      toolbar_.onResize(view_.getSize());
+      statusbar_.onResize(view_.getSize());
       pdf_view_.onResize(view_.getSize());
     }
 
+    if (const auto *key = event->getIf<sf::Event::KeyPressed>()) {
+      if (key->code == sf::Keyboard::Key::Semicolon && key->shift &&
+          focus_ != ui::UIElements::Cmdline)
+        event_bus_.emit("ui.focus", ui::UIElements::Cmdline);
+    }
+
     cmdline_.handleEvent(*event);
-    toolbar_.handleEvent(*event);
+    statusbar_.handleEvent(*event);
     pdf_view_.handleEvent(*event);
   }
 }

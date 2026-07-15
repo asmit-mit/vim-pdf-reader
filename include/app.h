@@ -7,7 +7,8 @@
 #include "core/event_bus.h"
 #include "ui/cmdline.h"
 #include "ui/pdf_view.h"
-#include "ui/toolbar.h"
+#include "ui/statusbar.h"
+#include "ui/ui_elements.h"
 
 class App {
 public:
@@ -28,8 +29,9 @@ private:
   core::CmdHistory cmd_history_;
 
   ui::Cmdline cmdline_;
-  ui::Toolbar toolbar_;
+  ui::Statusbar statusbar_;
   ui::PDFView pdf_view_;
+  ui::UIElements focus_;
 
   const unsigned int res_x_ = 640;
   const unsigned int res_y_ = 480;

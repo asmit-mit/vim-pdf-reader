@@ -5,9 +5,9 @@
 
 namespace ui {
 
-class Toolbar : public Widget {
+class Statusbar : public Widget {
 public:
-  explicit Toolbar(const sf::Font &font, core::EventBus &event_bus);
+  explicit Statusbar(const sf::Font &font, core::EventBus &event_bus);
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;

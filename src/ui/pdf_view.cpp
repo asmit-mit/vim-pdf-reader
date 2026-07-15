@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 #include "ui/pdf_view.h"
+#include "ui/ui_elements.h"
 
 namespace ui {
 PDFView::PDFView(core::EventBus &event_bus)
@@ -29,6 +30,10 @@ PDFView::PDFView(core::EventBus &event_bus)
           event_bus_.emit("status.msg", std::string(e.what()));
         }
       });
+
+  event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
+    should_take_input_ = focus == ui::UIElements::PDFView;
+  });
 }
 
 void PDFView::setZoom(float zoom) {
@@ -73,7 +78,9 @@ void PDFView::handleEvent(const sf::Event &event) {
   if (!has_document_)
     return;
 
-  if (const auto *key = event.getIf<sf::Event::KeyPressed>()) {
+  const auto *key = event.getIf<sf::Event::KeyPressed>();
+
+  if (key && should_take_input_) {
     if (key->code == sf::Keyboard::Key::Add || key->code == sf::Keyboard::Key::Equal) {
       zoom_ += 0.2f;
       zoom_changed_ = true;

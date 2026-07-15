@@ -8,7 +8,11 @@
 
 namespace ui {
 
-enum class CmdlineState { Status, Edit, Hidden };
+enum class CmdlineState {
+  Status,
+  Edit,
+  Hidden,
+};
 
 class Cmdline : public Widget {
 public:
@@ -39,6 +43,8 @@ private:
   sf::RectangleShape display_area_;
   CmdlineState state_;
 
+  bool ignore_next_text_entered_;
+  bool should_take_input_;
   float curr_x_, curr_y_;
   static constexpr float height_ = 24.0;
 };
