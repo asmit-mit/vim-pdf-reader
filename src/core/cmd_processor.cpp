@@ -10,6 +10,10 @@ CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
   commands_["open"] = 2;
   commands_["close"] = 1;
   commands_["quit"] = 1;
+
+  event_bus_.subscribe<std::string>("status.msg", [](const std::string &msg) {
+    throw std::runtime_error(msg);
+  });
 }
 
 void CmdProcessor::runCommand(const std::string &cmd) {

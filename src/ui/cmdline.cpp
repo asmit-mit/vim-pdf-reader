@@ -84,6 +84,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
 
   if (key) {
     if (state_ == CmdlineState::Status) {
+      label_.setString("");
       textbox_.stopEditing();
 
       if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
@@ -92,23 +93,24 @@ void Cmdline::handleEvent(const sf::Event &event) {
         textbox_.startEditing();
         ignore_next_text_entered_ = true;
       } else if (key->code == sf::Keyboard::Key::Escape) {
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         cmd_history_.reset();
         textbox_.reset();
         textbox_.stopEditing();
-        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       }
 
       return;
     }
 
     if (state_ == CmdlineState::Edit) {
+      label_.setString(":");
       textbox_.startEditing();
 
       if (key->code == sf::Keyboard::Key::Escape) {
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         cmd_history_.reset();
         textbox_.reset();
         textbox_.stopEditing();
-        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::Enter) {
         cmd_history_.add(textbox_.getText());
         try {

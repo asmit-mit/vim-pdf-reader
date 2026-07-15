@@ -1,10 +1,12 @@
-#include <algorithm>
+#include <iostream>
 #include <stdexcept>
 
 #include "ui/pdf_view.h"
 #include "ui/ui_elements.h"
+#include "utils/utils.h"
 
 namespace ui {
+
 PDFView::PDFView(core::EventBus &event_bus)
     : renderer_(document_), event_bus_(event_bus), sprite_(sf::Sprite(texture_)) {
   curr_x_ = 0.f;
@@ -13,17 +15,13 @@ PDFView::PDFView(core::EventBus &event_bus)
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
         try {
-          document_.openDocument(filepath);
+          document_.openDocument(utils::resolvePath(filepath));
           has_document_ = true;
           current_page_ = 0;
           zoom_ = 1.f;
 
           texture_ = renderer_.render(current_page_, zoom_);
           sprite_.setTexture(texture_, true);
-          event_bus_.emit("toolbar.pdf_path", filepath);
-          event_bus_.emit("toolbar.page_number", 0);
-          event_bus_.emit("toolbar.total_pages", document_.size());
-          event_bus_.emit("toolbar.page_zoom", zoom_);
 
         } catch (const std::runtime_error &e) {
           has_document_ = false;
@@ -44,6 +42,7 @@ void PDFView::setZoom(float zoom) {
 
   texture_ = renderer_.render(current_page_, zoom_);
   sprite_.setTexture(texture_, true);
+  std::cout << texture_.getSize().x << " " << texture_.getSize().y << std::endl;
 }
 
 void PDFView::draw(sf::RenderTarget &window) const {

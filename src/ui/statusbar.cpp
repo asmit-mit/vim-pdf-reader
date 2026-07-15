@@ -16,7 +16,7 @@ Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
   display_page_num_.setFillColor(utils::hexToRGB(settings::fg_));
   display_zoom_.setFillColor(utils::hexToRGB(settings::fg_));
 
-  filepath_ = "Nothing Open Yet";
+  filepath_ = "[Nothing Open Yet]";
   page_idx_ = 0;
   total_pages_ = 0;
   page_zoom_ = 1.f;

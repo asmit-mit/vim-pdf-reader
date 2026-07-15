@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 
 #include "SFML/Graphics.hpp"
 
@@ -10,6 +11,15 @@ const float padding = 8.f;
 
 inline sf::Color hexToRGB(const uint32_t hex) {
   return sf::Color((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+}
+
+inline std::string resolvePath(std::string path) {
+  if (path.starts_with("~/")) {
+    if (const char *home = std::getenv("HOME"))
+      path = (std::filesystem::path(home) / path.substr(2)).string();
+  }
+
+  return path;
 }
 
 } // namespace utils
