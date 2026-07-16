@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "app.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
@@ -9,8 +7,9 @@ App::App()
           "/home/asmitpaul/.local/share/fonts/"
           "JetBrainsMonoNerdFont-Light.ttf"
       ),
-      cmd_processor_(event_bus_), cmdline_(font_, event_bus_, cmd_processor_, cmd_history_),
-      statusbar_(font_, event_bus_), pdf_view_(event_bus_) {
+      cmd_processor_(event_bus_), renderer_(document_),
+      cmdline_(font_, event_bus_, cmd_processor_, cmd_history_), statusbar_(font_, event_bus_),
+      pdf_view_(document_, renderer_, event_bus_) {
   sf::ContextSettings settings;
   settings.antiAliasingLevel = 8;
 
@@ -30,7 +29,6 @@ App::App()
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     focus_ = focus;
   });
-
 }
 
 void App::run() {

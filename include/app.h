@@ -28,6 +28,9 @@ private:
   core::CmdProcessor cmd_processor_;
   core::CmdHistory cmd_history_;
 
+  pdf::PDFDocument document_;
+  pdf::PDFRenderer renderer_;
+
   ui::Cmdline cmdline_;
   ui::Statusbar statusbar_;
   ui::PDFView pdf_view_;
