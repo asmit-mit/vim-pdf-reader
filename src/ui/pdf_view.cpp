@@ -13,9 +13,8 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   curr_x_ = 0.f;
   curr_y_ = 0.f;
   current_page_ = 0;
+  render_page_ = 0;
   has_document_ = false;
-  zoom_changed_ = false;
-  page_changed_ = false;
   should_take_input_ = false;
 
   event_bus_
@@ -24,6 +23,7 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
           document_.openDocument(utils::resolvePath(filepath));
           has_document_ = true;
           current_page_ = 0;
+          render_page_ = 0;
           visual_zoom_ = 1.f;
           render_zoom_ = 1.f;
 
@@ -52,7 +52,6 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
       event_bus_.emit("cmdline.msg", msg);
     }
     current_page_ = page_num - 1;
-    page_changed_ = true;
   });
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
@@ -65,8 +64,12 @@ void PDFView::setZoom(float new_zoom) {
     return;
 
   const float clamped = std::clamp(new_zoom, min_zoom_, max_zoom_);
+  if (clamped == visual_zoom_)
+    return;
+
+  event_bus_.emit("toolbar.page_zoom", visual_zoom_);
   visual_zoom_ = clamped;
-  render_zoom_ = clamped;
+  zoom_timer_.restart();
 }
 
 void PDFView::getPage(std::size_t page_num, float zoom) {
@@ -94,15 +97,16 @@ void PDFView::update() {
   const float scale = visual_zoom_ / render_zoom_;
   sprite_.setScale({scale, scale});
 
-  if (zoom_changed_ && zoom_timer_.getElapsedTime().asMilliseconds() > zoom_dobounce_ms_) {
-    setZoom(visual_zoom_);
+  if ((render_zoom_ != visual_zoom_) &&
+      zoom_timer_.getElapsedTime().asMilliseconds() > zoom_dobounce_ms_) {
     getPage(current_page_, visual_zoom_);
-    zoom_changed_ = false;
+    render_zoom_ = visual_zoom_;
   }
 
-  if (page_changed_) {
+  if (render_page_ != current_page_) {
     getPage(current_page_, visual_zoom_);
-    page_changed_ = false;
+    render_page_ = current_page_;
+    event_bus_.emit("toolbar.page_number", current_page_);
   }
 
   const auto bounds = sprite_.getGlobalBounds();
@@ -120,8 +124,6 @@ void PDFView::update() {
     curr_y_ = std::clamp(curr_y_, window_size_.y - page_h / 2.f, page_h / 2.f);
 
   sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
-  event_bus_.emit("toolbar.page_number", current_page_);
-  event_bus_.emit("toolbar.page_zoom", visual_zoom_);
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
@@ -129,19 +131,13 @@ void PDFView::handleEvent(const sf::Event &event) {
     return;
   const auto *key = event.getIf<sf::Event::KeyPressed>();
   if (key && should_take_input_) {
-    if (key->code == sf::Keyboard::Key::Equal && key->shift) {
-      visual_zoom_ = std::clamp(visual_zoom_ + settings::delta_zoom_, min_zoom_, max_zoom_);
-      zoom_changed_ = true;
-      zoom_timer_.restart();
-    } else if (key->code == sf::Keyboard::Key::Hyphen && key->shift) {
-      visual_zoom_ = std::clamp(visual_zoom_ - settings::delta_zoom_, min_zoom_, max_zoom_);
-      zoom_changed_ = true;
-      zoom_timer_.restart();
-    } else if (key->code == sf::Keyboard::Key::Equal) {
-      visual_zoom_ = 1.f;
-      zoom_changed_ = true;
-      zoom_timer_.restart();
-    } else if (key->code == sf::Keyboard::Key::J)
+    if (key->code == sf::Keyboard::Key::Equal && key->shift)
+      setZoom(visual_zoom_ + settings::delta_zoom_);
+    else if (key->code == sf::Keyboard::Key::Hyphen && key->shift)
+      setZoom(visual_zoom_ - settings::delta_zoom_);
+    else if (key->code == sf::Keyboard::Key::Equal)
+      setZoom(1.f);
+    else if (key->code == sf::Keyboard::Key::J)
       curr_y_ -= scroll_dist_;
     else if (key->code == sf::Keyboard::Key::K)
       curr_y_ += scroll_dist_;
@@ -153,13 +149,17 @@ void PDFView::handleEvent(const sf::Event &event) {
       curr_y_ += window_size_.y * 0.5f;
     else if (key->code == sf::Keyboard::Key::D)
       curr_y_ -= window_size_.y * 0.5f;
-    else if (key->code == sf::Keyboard::Key::N) {
-      page_changed_ = true;
+    else if (key->code == sf::Keyboard::Key::N)
       current_page_ = std::min(document_.size() - 1, current_page_ + 1);
-    } else if (key->code == sf::Keyboard::Key::P) {
-      page_changed_ = true;
+    else if (key->code == sf::Keyboard::Key::P)
       current_page_ = std::max(0, (int)current_page_ - 1);
-    }
+    else if (key->code == sf::Keyboard::Key::F) {
+      const float width_zoom = visual_zoom_ * window_size_.x / sprite_.getGlobalBounds().size.x;
+      const float height_zoom = visual_zoom_ * (window_size_.y - utils::cmdline_height_) /
+                                sprite_.getGlobalBounds().size.y;
+      setZoom(std::min(width_zoom, height_zoom));
+    } else if (key->code == sf::Keyboard::Key::W)
+      setZoom(visual_zoom_ * window_size_.x / sprite_.getGlobalBounds().size.x);
   }
 }
 

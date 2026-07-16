@@ -14,8 +14,7 @@ Cmdline::Cmdline(
     core::CmdHistory &cmd_history
 )
     : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history), font_(font),
-      label_(font, ":", 16),
-      textbox_(font_, event_bus, 16, ":", "cmdline.visible", "cmdline.typing") {
+      label_(font, ":", 16), textbox_(font_, event_bus, 16, ":", "cmdline.typing") {
   state_ = CmdlineState::Hidden;
   should_take_input_ = false;
   ignore_next_text_entered_ = false;
@@ -31,15 +30,15 @@ Cmdline::Cmdline(
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     should_take_input_ = focus == ui::UIElements::Cmdline;
     state_ = should_take_input_ ? CmdlineState::Edit : CmdlineState::Hidden;
-    textbox_.clear();
-    textbox_.setCursorPosition(0);
+    textbox_.reset();
     textbox_.startEditing();
   });
 }
 
 void Cmdline::draw(sf::RenderTarget &window) const {
-  if (state_ == CmdlineState::Hidden)
+  if (state_ == CmdlineState::Hidden) {
     return;
+  }
 
   window.draw(display_area_);
   textbox_.draw(window);
@@ -48,12 +47,11 @@ void Cmdline::draw(sf::RenderTarget &window) const {
 
 void Cmdline::update() {
   if (state_ == CmdlineState::Hidden) {
-    event_bus_.emit("cmdline.visible", false);
+    textbox_.hide();
     return;
   }
 
-  event_bus_.emit("cmdline.visible", true);
-
+  textbox_.show();
   float round_y = std::round(curr_y_) + 1.f;
 
   display_area_.setPosition({curr_x_, round_y});
@@ -86,7 +84,6 @@ void Cmdline::handleEvent(const sf::Event &event) {
 
   if (key) {
     if (state_ == CmdlineState::Status) {
-      label_.setString("");
       textbox_.stopEditing();
 
       if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
@@ -99,13 +96,13 @@ void Cmdline::handleEvent(const sf::Event &event) {
         cmd_history_.reset();
         textbox_.reset();
         textbox_.stopEditing();
+        textbox_.hide();
       }
 
       return;
     }
 
     if (state_ == CmdlineState::Edit) {
-      label_.setString(":");
       textbox_.startEditing();
 
       if (key->code == sf::Keyboard::Key::Escape) {
@@ -113,6 +110,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
         cmd_history_.reset();
         textbox_.reset();
         textbox_.stopEditing();
+        textbox_.hide();
       } else if (key->code == sf::Keyboard::Key::Enter) {
         cmd_history_.add(textbox_.getText());
         try {

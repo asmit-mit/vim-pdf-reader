@@ -8,6 +8,7 @@
 namespace utils {
 
 const float padding = 8.f;
+const float cmdline_height_ = 24.f;
 
 inline sf::Color hexToRGB(const uint32_t hex) {
   return sf::Color((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);

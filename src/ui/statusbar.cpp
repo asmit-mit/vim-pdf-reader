@@ -1,13 +1,14 @@
 #include "SFML/Window/Keyboard.hpp"
 
 #include "ui/statusbar.h"
+#include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
 
 namespace ui {
 
 Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
-    : font_(font), display_filepath_(font_, "Nothing Open Yet", 16),
+    : font_(font), display_filepath_(font_, "[Nothing Open Yet]", 16),
       display_page_num_(font_, "[]", 16), display_zoom_(font_, "[]", 16), event_bus_(event_bus) {
   display_area_.setFillColor(utils::hexToRGB(settings::status_bg_));
   display_area_.setSize({200.0, height_});
@@ -16,32 +17,35 @@ Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
   display_page_num_.setFillColor(utils::hexToRGB(settings::fg_));
   display_zoom_.setFillColor(utils::hexToRGB(settings::fg_));
 
-  filepath_ = "[Nothing Open Yet]";
   page_idx_ = 0;
   total_pages_ = 0;
-  page_zoom_ = 1.f;
   cmdline_visible_ = false;
+  page_details_changed_ = false;
 
   curr_x_ = 0.f;
   curr_y_ = 0.f;
 
-  event_bus_.subscribe<bool>("cmdline.visible", [this](bool visible) {
-    cmdline_visible_ = visible;
+  event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
+    cmdline_visible_ = focus == ui::UIElements::Cmdline;
   });
 
   event_bus_.subscribe<std::string>("toolbar.pdf_path", [this](const std::string &filepath) {
-    filepath_ = filepath;
+    display_filepath_.setString(filepath);
   });
 
   event_bus_.subscribe<std::size_t>("toolbar.page_number", [this](std::size_t page_number) {
     page_idx_ = page_number;
+    page_details_changed_ = true;
   });
 
   event_bus_.subscribe<std::size_t>("toolbar.total_pages", [this](std::size_t total_pages) {
     total_pages_ = total_pages;
+    page_details_changed_ = true;
   });
 
-  event_bus_.subscribe<float>("toolbar.page_zoom", [this](float zoom) { page_zoom_ = zoom; });
+  event_bus_.subscribe<float>("toolbar.page_zoom", [this](float zoom) {
+    display_zoom_.setString("[" + std::to_string((int)(zoom * 100)) + "%]");
+  });
 }
 
 void Statusbar::draw(sf::RenderTarget &window) const {
@@ -54,11 +58,12 @@ void Statusbar::draw(sf::RenderTarget &window) const {
 }
 
 void Statusbar::update() {
-  display_filepath_.setString(filepath_);
-  display_page_num_.setString(
-      "[" + std::to_string(page_idx_ + 1) + "/" + std::to_string(total_pages_) + "]"
-  );
-  display_zoom_.setString("[" + std::to_string((int)(page_zoom_ * 100)) + "%]");
+  if (page_details_changed_) {
+    display_page_num_.setString(
+        "[" + std::to_string(page_idx_ + 1) + "/" + std::to_string(total_pages_) + "]"
+    );
+    page_details_changed_ = false;
+  }
 
   float y = std::round(curr_y_);
 
@@ -70,10 +75,8 @@ void Statusbar::update() {
   const float round_y = display_area_.getGlobalBounds().getCenter().y;
   display_filepath_.setPosition({utils::padding, round_y});
 
-  const auto display_area_bounds = display_area_.getLocalBounds();
   const float page_num_x = std::round(
-      display_area_bounds.position.x + display_area_bounds.size.x -
-      display_page_num_.getLocalBounds().size.x - utils::padding
+      display_area_.getSize().x - display_page_num_.getLocalBounds().size.x - utils::padding
   );
   const float zoom_x = std::round(
       page_num_x - display_zoom_.getLocalBounds().size.x - utils::padding

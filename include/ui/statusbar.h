@@ -24,10 +24,9 @@ private:
 
   core::EventBus &event_bus_;
 
-  std::string filepath_;
   std::size_t page_idx_;
   std::size_t total_pages_;
-  float page_zoom_;
+  bool page_details_changed_;
   bool cmdline_visible_;
   float curr_x_, curr_y_;
 

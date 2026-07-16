@@ -10,21 +10,20 @@ Textbox::Textbox(
     core::EventBus &event_bus,
     int char_size,
     const std::string &input_string,
-    const std::string &enable_event,
     const std::string &typing_event
 )
     : event_bus_(event_bus), font_(font), display_text_(font, input_string, char_size),
-      cursor_(event_bus, typing_event), cursor_event_(typing_event) {
+      cursor_(event_bus, typing_event), text_(input_string), cursor_event_(typing_event) {
   visible_ = false;
   editing_ = false;
+  text_dirty_ = false;
+  cursor_dirty_ = false;
 
   display_text_.setFillColor(utils::hexToRGB(settings::fg_));
 
   cursor_size_ = {0.f, 0.f};
   pos_ = {0.f, 0.f};
   cursor_pos_ = 0;
-
-  event_bus_.subscribe<bool>(enable_event, [this](bool visible) { visible_ = visible; });
 }
 
 void Textbox::draw(sf::RenderTarget &window) const {
@@ -39,7 +38,13 @@ void Textbox::update() {
   if (!visible_)
     return;
 
-  display_text_.setString(text_);
+  cursor_dirty_ |= text_dirty_;
+
+  if (text_dirty_) {
+    display_text_.setString(text_);
+    text_dirty_ = false;
+  }
+
   display_text_.setPosition(pos_);
   cursor_.update();
 
@@ -48,20 +53,24 @@ void Textbox::update() {
     return;
   }
 
-  const auto &glyphs = display_text_.getShapedGlyphs();
+  if (cursor_dirty_) {
+    const auto &glyphs = display_text_.getShapedGlyphs();
 
-  sf::Vector2f local{0.f, 0.f};
-  if (!glyphs.empty()) {
-    if (cursor_pos_ < glyphs.size()) {
-      local = glyphs[cursor_pos_].position;
-    } else {
-      const auto &last = glyphs.back();
-      local = {last.position.x + last.glyph.advance, last.position.y};
+    sf::Vector2f local{0.f, 0.f};
+    if (!glyphs.empty()) {
+      if (cursor_pos_ < glyphs.size()) {
+        local = glyphs[cursor_pos_].position;
+      } else {
+        const auto &last = glyphs.back();
+        local = {last.position.x + last.glyph.advance, last.position.y};
+      }
     }
-  }
 
-  sf::Vector2f world = display_text_.getTransform().transformPoint(local);
-  cursor_.setPosition({world.x, pos_.y});
+    sf::Vector2f world = display_text_.getTransform().transformPoint(local);
+    cursor_.setPosition({world.x, pos_.y});
+
+    cursor_dirty_ = false;
+  }
 }
 
 void Textbox::handleEvent(const sf::Event &event) {
@@ -83,23 +92,25 @@ void Textbox::handleEvent(const sf::Event &event) {
     } else if (key->code == sf::Keyboard::Key::V && key->control) {
       const auto clip = sf::Clipboard::getString().toAnsiString();
       text_.insert(cursor_pos_, clip);
-      cursor_pos_ += clip.size();
+      setCursorPosition(cursor_pos_ + clip.size());
+      text_dirty_ = true;
     } else if (key->code == sf::Keyboard::Key::Left && key->control) {
       ctrlArrow(false);
     } else if (key->code == sf::Keyboard::Key::Right && key->control) {
       ctrlArrow(true);
     } else if (key->code == sf::Keyboard::Key::Left) {
-      if (cursor_pos_ > 0)
-        cursor_pos_--;
+      setCursorPosition(cursor_pos_ - 1);
+      cursor_dirty_ = true;
     } else if (key->code == sf::Keyboard::Key::Right) {
-      if (cursor_pos_ < text_.size())
-        cursor_pos_++;
+      setCursorPosition(cursor_pos_ + 1);
+      cursor_dirty_ = true;
     }
     event_bus_.emit(cursor_event_, true);
   } else if (text) {
     if (text->unicode >= 32 && text->unicode < 127) {
       text_.insert(text_.begin() + cursor_pos_, text->unicode);
       cursor_pos_++;
+      text_dirty_ = true;
     }
     event_bus_.emit(cursor_event_, true);
   }
@@ -113,12 +124,28 @@ void Textbox::setPosition(const sf::Vector2f &pos) {
   pos_ = pos;
 }
 
+void Textbox::show() {
+  if (visible_)
+    return;
+  visible_ = true;
+}
+
+void Textbox::hide() {
+  if (!visible_)
+    return;
+  visible_ = false;
+}
+
 void Textbox::startEditing() {
+  if (editing_)
+    return;
   editing_ = true;
   cursor_.start();
 }
 
 void Textbox::stopEditing() {
+  if (!editing_)
+    return;
   editing_ = false;
   cursor_.stop();
 }
@@ -129,6 +156,7 @@ std::size_t Textbox::size() {
 
 void Textbox::clear() {
   text_.clear();
+  text_dirty_ = true;
 }
 
 void Textbox::reset() {
@@ -138,14 +166,16 @@ void Textbox::reset() {
 
 void Textbox::setText(const std::string &text) {
   text_ = text;
+  text_dirty_ = true;
 }
 
 const std::string &Textbox::getText() const {
   return text_;
 }
 
-void Textbox::setCursorPosition(std::size_t pos) {
-  cursor_pos_ = pos;
+void Textbox::setCursorPosition(int pos) {
+  cursor_pos_ = std::clamp(pos, 0, (int)text_.size());
+  cursor_dirty_ = true;
 }
 
 std::size_t Textbox::getCursorPosition() const {
@@ -156,6 +186,7 @@ void Textbox::backspace() {
   if (cursor_pos_ > 0) {
     text_.erase(text_.begin() + cursor_pos_ - 1);
     cursor_pos_--;
+    text_dirty_ = true;
   }
 }
 
@@ -177,6 +208,7 @@ void Textbox::ctrlBackspace() {
 
   text_.erase(start, cursor_pos_ - start);
   cursor_pos_ = start;
+  text_dirty_ = true;
 }
 void Textbox::del() {
   if (cursor_pos_ >= text_.size()) {
@@ -184,6 +216,7 @@ void Textbox::del() {
     return;
   }
   text_.erase(text_.begin() + cursor_pos_);
+  text_dirty_ = true;
 }
 
 void Textbox::ctrlDel() {
@@ -205,6 +238,7 @@ void Textbox::ctrlDel() {
     ++end;
 
   text_.erase(cursor_pos_, end - cursor_pos_);
+  text_dirty_ = true;
 }
 
 void Textbox::ctrlArrow(bool right) {
@@ -243,6 +277,8 @@ void Textbox::ctrlArrow(bool right) {
 
     cursor_pos_ = pos;
   }
+
+  cursor_dirty_ = true;
 }
 
 } // namespace ui

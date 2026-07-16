@@ -13,7 +13,6 @@ public:
       core::EventBus &event_bus,
       int char_size,
       const std::string &input_string,
-      const std::string &enable_event,
       const std::string &typing_event
   );
 
@@ -24,6 +23,8 @@ public:
   void setCursorSize(const sf::Vector2f &cursor_size);
   void setPosition(const sf::Vector2f &pos);
 
+  void show();
+  void hide();
   void startEditing();
   void stopEditing();
 
@@ -34,7 +35,7 @@ public:
   void setText(const std::string &text);
   const std::string &getText() const;
 
-  void setCursorPosition(std::size_t pos);
+  void setCursorPosition(int pos);
   std::size_t getCursorPosition() const;
 
 private:
@@ -59,6 +60,8 @@ private:
 
   bool visible_;
   bool editing_;
+  bool text_dirty_;
+  bool cursor_dirty_;
 };
 
 } // namespace ui

@@ -36,9 +36,8 @@ private:
   sf::Vector2f window_size_;
 
   std::size_t current_page_;
+  std::size_t render_page_;
   bool has_document_;
-  bool zoom_changed_;
-  bool page_changed_;
   bool should_take_input_;
 
   float curr_x_, curr_y_;
