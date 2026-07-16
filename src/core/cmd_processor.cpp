@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "core/cmd_processor.h"
+#include "utils/utils.h"
 
 namespace core {
 
@@ -11,7 +12,7 @@ CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
   commands_["close"] = 1;
   commands_["quit"] = 1;
 
-  event_bus_.subscribe<std::string>("status.msg", [](const std::string &msg) {
+  event_bus_.subscribe<const char *>("cmdline.msg", [](const char *msg) {
     throw std::runtime_error(msg);
   });
 }
@@ -27,6 +28,11 @@ void CmdProcessor::runCommand(const std::string &cmd) {
 
   while (iss >> arg)
     argv.push_back(arg);
+
+  if (utils::isNumber(argv[0])) {
+    event_bus_.emit("cmd_processor.switch_page", std::stoi(argv[0]));
+    return;
+  }
 
   if (!commands_.contains(argv[0]))
     throw std::runtime_error("Not a valid command.");

@@ -22,6 +22,8 @@ public:
 
 private:
   void setZoom(float zoom);
+  void getPage(std::size_t page_num, float zoom);
+  void centerPage();
 
 private:
   core::EventBus &event_bus_;

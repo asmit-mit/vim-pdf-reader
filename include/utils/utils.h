@@ -22,4 +22,9 @@ inline std::string resolvePath(std::string path) {
   return path;
 }
 
+inline bool isNumber(const std::string &s) {
+  return !s.empty() &&
+         std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); });
+}
+
 } // namespace utils

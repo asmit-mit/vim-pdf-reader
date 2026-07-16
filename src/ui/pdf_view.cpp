@@ -27,12 +27,7 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
           visual_zoom_ = 1.f;
           render_zoom_ = 1.f;
 
-          texture_ = renderer_.render(current_page_, render_zoom_);
-          sprite_.setTexture(texture_, true);
-          sprite_.setScale({1.f, 1.f});
-
-          const auto bounds = sprite_.getLocalBounds();
-          sprite_.setOrigin({std::round(bounds.size.x / 2.f), std::round(bounds.size.y / 2.f)});
+          getPage(current_page_, render_zoom_);
 
           curr_x_ = window_size_.x / 2.f;
           curr_y_ = window_size_.y / 2.f;
@@ -43,28 +38,45 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
           event_bus_.emit("toolbar.page_zoom", visual_zoom_);
         } catch (const std::runtime_error &e) {
           has_document_ = false;
-          event_bus_.emit("status.msg", std::string(e.what()));
+          event_bus_.emit("cmdline.msg", e.what());
         }
       });
+
+  event_bus_.subscribe<int>("cmd_processor.switch_page", [this](int page_num) {
+    if (!has_document_) {
+      const char *msg = "No document currently open";
+      event_bus_.emit("cmdline.msg", msg);
+    }
+    if (page_num < 1 || page_num > (int)document_.size()) {
+      const char *msg = "Page number out of range";
+      event_bus_.emit("cmdline.msg", msg);
+    }
+    current_page_ = page_num - 1;
+    page_changed_ = true;
+  });
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     should_take_input_ = focus == ui::UIElements::PDFView;
   });
 }
 
-
 void PDFView::setZoom(float new_zoom) {
   if (!has_document_)
     return;
 
   const float clamped = std::clamp(new_zoom, min_zoom_, max_zoom_);
-
   visual_zoom_ = clamped;
   render_zoom_ = clamped;
-  texture_ = renderer_.render(current_page_, render_zoom_);
+}
+
+void PDFView::getPage(std::size_t page_num, float zoom) {
+  texture_ = renderer_.render(page_num, zoom);
   sprite_.setTexture(texture_, true);
   sprite_.setScale({1.f, 1.f});
+  centerPage();
+}
 
+void PDFView::centerPage() {
   const auto bounds = sprite_.getLocalBounds();
   sprite_.setOrigin({std::round(bounds.size.x / 2.f), std::round(bounds.size.y / 2.f)});
 }
@@ -81,10 +93,15 @@ void PDFView::update() {
 
   const float scale = visual_zoom_ / render_zoom_;
   sprite_.setScale({scale, scale});
-  if (page_changed_ ||
-      (zoom_changed_ && zoom_timer_.getElapsedTime().asMilliseconds() > zoom_dobounce_ms_)) {
+
+  if (zoom_changed_ && zoom_timer_.getElapsedTime().asMilliseconds() > zoom_dobounce_ms_) {
     setZoom(visual_zoom_);
+    getPage(current_page_, visual_zoom_);
     zoom_changed_ = false;
+  }
+
+  if (page_changed_) {
+    getPage(current_page_, visual_zoom_);
     page_changed_ = false;
   }
 
