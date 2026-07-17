@@ -24,6 +24,8 @@ private:
   void setZoom(float zoom);
   void getPage(std::size_t page_num, float zoom);
   void centerPage();
+  void resetView();
+  void setPageLoc(float x, float y);
 
 private:
   core::EventBus &event_bus_;
@@ -33,12 +35,14 @@ private:
   sf::Texture texture_;
   sf::Sprite sprite_;
   sf::Clock zoom_timer_;
+  sf::Keyboard::Key prev_key_;
   sf::Vector2f window_size_;
 
   std::size_t current_page_;
   std::size_t render_page_;
   bool has_document_;
   bool should_take_input_;
+  bool page_loc_changed_;
 
   float curr_x_, curr_y_;
   float render_zoom_;

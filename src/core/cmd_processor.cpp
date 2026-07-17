@@ -10,7 +10,9 @@ namespace core {
 CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
   commands_["open"] = 2;
   commands_["close"] = 1;
+
   commands_["quit"] = 1;
+  commands_["q"] = 1;
 
   event_bus_.subscribe<const char *>("cmdline.msg", [](const char *msg) {
     throw std::runtime_error(msg);
@@ -46,6 +48,12 @@ void CmdProcessor::runCommand(const std::string &cmd) {
 
   if (argv[0] == "open")
     event_bus_.emit("cmd_processor.open_document", argv[1]);
+
+  if (argv[0] == "close")
+    event_bus_.emit("cmd_processor.close_document", true);
+
+  if (argv[0] == "q" || argv[0] == "quit")
+    event_bus_.emit("cmd_processor.quit", true);
 }
 
 } // namespace core

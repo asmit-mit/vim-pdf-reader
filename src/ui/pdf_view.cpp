@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdexcept>
 
 #include "ui/pdf_view.h"
@@ -16,31 +17,36 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   render_page_ = 0;
   has_document_ = false;
   should_take_input_ = false;
+  page_loc_changed_ = false;
 
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
         try {
           document_.openDocument(utils::resolvePath(filepath));
+          resetView();
           has_document_ = true;
-          current_page_ = 0;
-          render_page_ = 0;
-          visual_zoom_ = 1.f;
-          render_zoom_ = 1.f;
 
           getPage(current_page_, render_zoom_);
+          setPageLoc(window_size_.x / 2.f, window_size_.y / 2.f);
 
-          curr_x_ = window_size_.x / 2.f;
-          curr_y_ = window_size_.y / 2.f;
-
-          event_bus_.emit("toolbar.pdf_path", filepath);
-          event_bus_.emit("toolbar.page_number", 0);
-          event_bus_.emit("toolbar.total_pages", document_.size());
-          event_bus_.emit("toolbar.page_zoom", visual_zoom_);
+          event_bus_.emit("statusbar.pdf_path", filepath);
+          event_bus_.emit("statusbar.page_number", 1);
+          event_bus_.emit("statusbar.total_pages", document_.size());
+          event_bus_.emit("statusbar.page_zoom", visual_zoom_);
         } catch (const std::runtime_error &e) {
           has_document_ = false;
           event_bus_.emit("cmdline.msg", e.what());
         }
       });
+
+  event_bus_.subscribe<bool>("cmd_processor.close_document", [this](bool close_document) {
+    if (!has_document_)
+      return;
+    document_.closeDocument();
+    resetView();
+    event_bus_.emit("statusbar.pdf_path", std::string("[Nothing Open Yet]"));
+    event_bus_.emit("statusbar.total_pages", (std::size_t)0);
+  });
 
   event_bus_.subscribe<int>("cmd_processor.switch_page", [this](int page_num) {
     if (!has_document_) {
@@ -57,31 +63,6 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     should_take_input_ = focus == ui::UIElements::PDFView;
   });
-}
-
-void PDFView::setZoom(float new_zoom) {
-  if (!has_document_)
-    return;
-
-  const float clamped = std::clamp(new_zoom, min_zoom_, max_zoom_);
-  if (clamped == visual_zoom_)
-    return;
-
-  event_bus_.emit("toolbar.page_zoom", visual_zoom_);
-  visual_zoom_ = clamped;
-  zoom_timer_.restart();
-}
-
-void PDFView::getPage(std::size_t page_num, float zoom) {
-  texture_ = renderer_.render(page_num, zoom);
-  sprite_.setTexture(texture_, true);
-  sprite_.setScale({1.f, 1.f});
-  centerPage();
-}
-
-void PDFView::centerPage() {
-  const auto bounds = sprite_.getLocalBounds();
-  sprite_.setOrigin({std::round(bounds.size.x / 2.f), std::round(bounds.size.y / 2.f)});
 }
 
 void PDFView::draw(sf::RenderTarget &window) const {
@@ -106,7 +87,12 @@ void PDFView::update() {
   if (render_page_ != current_page_) {
     getPage(current_page_, visual_zoom_);
     render_page_ = current_page_;
-    event_bus_.emit("toolbar.page_number", current_page_);
+    event_bus_.emit("statusbar.page_number", current_page_);
+  }
+
+  if (page_loc_changed_) {
+    std::cout << "loc changed" << std::endl;
+    page_loc_changed_ = false;
   }
 
   const auto bounds = sprite_.getGlobalBounds();
@@ -121,7 +107,8 @@ void PDFView::update() {
   if (page_h <= window_size_.y)
     curr_y_ = window_size_.y / 2.f;
   else
-    curr_y_ = std::clamp(curr_y_, window_size_.y - page_h / 2.f, page_h / 2.f);
+    curr_y_ =
+        std::clamp(curr_y_, window_size_.y - (page_h / 2.f) - utils::cmdline_height_, page_h / 2.f);
 
   sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
 }
@@ -129,26 +116,35 @@ void PDFView::update() {
 void PDFView::handleEvent(const sf::Event &event) {
   if (!has_document_)
     return;
+
   const auto *key = event.getIf<sf::Event::KeyPressed>();
   if (key && should_take_input_) {
-    if (key->code == sf::Keyboard::Key::Equal && key->shift)
+    if (key->code == sf::Keyboard::Key::Equal && key->control)
       setZoom(visual_zoom_ + settings::delta_zoom_);
-    else if (key->code == sf::Keyboard::Key::Hyphen && key->shift)
+    else if (key->code == sf::Keyboard::Key::Hyphen && key->control)
       setZoom(visual_zoom_ - settings::delta_zoom_);
     else if (key->code == sf::Keyboard::Key::Equal)
       setZoom(1.f);
-    else if (key->code == sf::Keyboard::Key::J)
-      curr_y_ -= scroll_dist_;
+    else if (key->code == sf::Keyboard::Key::G && key->shift)
+      setPageLoc(curr_x_, window_size_.y - (sprite_.getGlobalBounds().size.y / 2.f) - utils::cmdline_height_);
+    else if (key->code == sf::Keyboard::Key::G) {
+      if (prev_key_ == sf::Keyboard::Key::G) {
+        setPageLoc(curr_x_, sprite_.getGlobalBounds().size.y / 2.f);
+        prev_key_ = sf::Keyboard::Key::Unknown;
+      } else
+        prev_key_ = sf::Keyboard::Key::G;
+    } else if (key->code == sf::Keyboard::Key::J)
+      setPageLoc(curr_x_, curr_y_ - scroll_dist_);
     else if (key->code == sf::Keyboard::Key::K)
-      curr_y_ += scroll_dist_;
+      setPageLoc(curr_x_, curr_y_ + scroll_dist_);
     else if (key->code == sf::Keyboard::Key::H)
-      curr_x_ += scroll_dist_;
+      setPageLoc(curr_x_ + scroll_dist_, curr_y_);
     else if (key->code == sf::Keyboard::Key::L)
-      curr_x_ -= scroll_dist_;
+      setPageLoc(curr_x_ - scroll_dist_, curr_y_);
     else if (key->code == sf::Keyboard::Key::U)
-      curr_y_ += window_size_.y * 0.5f;
+      setPageLoc(curr_x_, curr_y_ + window_size_.y * 0.5f);
     else if (key->code == sf::Keyboard::Key::D)
-      curr_y_ -= window_size_.y * 0.5f;
+      setPageLoc(curr_x_, curr_y_ - window_size_.y * 0.5f);
     else if (key->code == sf::Keyboard::Key::N)
       current_page_ = std::min(document_.size() - 1, current_page_ + 1);
     else if (key->code == sf::Keyboard::Key::P)
@@ -165,6 +161,52 @@ void PDFView::handleEvent(const sf::Event &event) {
 
 void PDFView::onResize(const sf::Vector2f &size) {
   window_size_ = size;
+}
+
+void PDFView::setZoom(float new_zoom) {
+  if (!has_document_)
+    return;
+
+  const float clamped = std::clamp(new_zoom, min_zoom_, max_zoom_);
+  if (clamped == visual_zoom_)
+    return;
+
+  event_bus_.emit("statusbar.page_zoom", clamped);
+  visual_zoom_ = clamped;
+  zoom_timer_.restart();
+}
+
+void PDFView::getPage(std::size_t page_num, float zoom) {
+  texture_ = renderer_.render(page_num, zoom);
+  sprite_.setTexture(texture_, true);
+  sprite_.setScale({1.f, 1.f});
+  centerPage();
+}
+
+void PDFView::setPageLoc(float x, float y) {
+  curr_x_ = x;
+  curr_y_ = y;
+  page_loc_changed_ = true;
+}
+
+void PDFView::centerPage() {
+  const auto bounds = sprite_.getLocalBounds();
+  sprite_.setOrigin({std::round(bounds.size.x / 2.f), std::round(bounds.size.y / 2.f)});
+}
+
+void PDFView::resetView() {
+  has_document_ = false;
+
+  current_page_ = 0;
+  render_page_ = 0;
+
+  visual_zoom_ = 1.f;
+  render_zoom_ = 1.f;
+
+  setPageLoc(0.f, 0.f);
+
+  texture_ = sf::Texture{};
+  sprite_.setTexture(texture_, true);
 }
 
 } // namespace ui

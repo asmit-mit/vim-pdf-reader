@@ -1,5 +1,3 @@
-#include "SFML/Window/Keyboard.hpp"
-
 #include "ui/statusbar.h"
 #include "ui/ui_elements.h"
 #include "utils/settings.h"
@@ -29,21 +27,21 @@ Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
     cmdline_visible_ = focus == ui::UIElements::Cmdline;
   });
 
-  event_bus_.subscribe<std::string>("toolbar.pdf_path", [this](const std::string &filepath) {
+  event_bus_.subscribe<std::string>("statusbar.pdf_path", [this](const std::string &filepath) {
     display_filepath_.setString(filepath);
   });
 
-  event_bus_.subscribe<std::size_t>("toolbar.page_number", [this](std::size_t page_number) {
+  event_bus_.subscribe<std::size_t>("statusbar.page_number", [this](std::size_t page_number) {
     page_idx_ = page_number;
     page_details_changed_ = true;
   });
 
-  event_bus_.subscribe<std::size_t>("toolbar.total_pages", [this](std::size_t total_pages) {
+  event_bus_.subscribe<std::size_t>("statusbar.total_pages", [this](std::size_t total_pages) {
     total_pages_ = total_pages;
     page_details_changed_ = true;
   });
 
-  event_bus_.subscribe<float>("toolbar.page_zoom", [this](float zoom) {
+  event_bus_.subscribe<float>("statusbar.page_zoom", [this](float zoom) {
     display_zoom_.setString("[" + std::to_string((int)(zoom * 100)) + "%]");
   });
 }
@@ -68,11 +66,11 @@ void Statusbar::update() {
   float y = std::round(curr_y_);
 
   if (cmdline_visible_)
-    y -= height_;
+    y = (y - height_) + 1.f;
 
   display_area_.setPosition({curr_x_, y});
 
-  const float round_y = display_area_.getGlobalBounds().getCenter().y;
+  const float round_y = std::round(display_area_.getGlobalBounds().getCenter().y);
   display_filepath_.setPosition({utils::padding, round_y});
 
   const float page_num_x = std::round(

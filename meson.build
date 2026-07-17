@@ -3,6 +3,7 @@ project_name = meson.project_name()
 
 sfml_dep = dependency('sfml-graphics', required: true)
 mupdf_dep = dependency('mupdf', required: true)
+gtk_dep = dependency('gtk4', required: true)
 
 includes = include_directories('include')
 sources = files(
@@ -23,5 +24,5 @@ executable(
   project_name,
   sources,
   include_directories: includes,
-  dependencies: [sfml_dep, mupdf_dep],
+  dependencies: [sfml_dep, mupdf_dep, gtk_dep],
 )

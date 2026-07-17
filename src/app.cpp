@@ -26,6 +26,10 @@ App::App()
   statusbar_.onResize(view_.getSize());
   pdf_view_.onResize(view_.getSize());
 
+  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) {
+      window_.close();
+  });
+
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     focus_ = focus;
   });
@@ -66,10 +70,12 @@ void App::processEvents() {
       pdf_view_.onResize(view_.getSize());
     }
 
-    if (const auto *key = event->getIf<sf::Event::KeyPressed>()) {
-      if (key->code == sf::Keyboard::Key::Semicolon && key->shift &&
-          focus_ != ui::UIElements::Cmdline)
-        event_bus_.emit("ui.focus", ui::UIElements::Cmdline);
+    if (focus_ == ui::UIElements::PDFView) {
+      if (const auto *key = event->getIf<sf::Event::KeyPressed>()) {
+        if (key->code == sf::Keyboard::Key::Semicolon && key->shift &&
+            focus_ != ui::UIElements::Cmdline)
+          event_bus_.emit("ui.focus", ui::UIElements::Cmdline);
+      }
     }
 
     cmdline_.handleEvent(*event);
