@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/event_bus.h"
 #include "ui/cursor.h"
 #include "ui/widget.h"
 
@@ -8,13 +7,7 @@ namespace ui {
 
 class Textbox : public Widget {
 public:
-  explicit Textbox(
-      const sf::Font &font,
-      core::EventBus &event_bus,
-      int char_size,
-      const std::string &input_string,
-      const std::string &typing_event
-  );
+  explicit Textbox(const sf::Font &font, int char_size, const std::string &input_string);
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
@@ -46,7 +39,6 @@ private:
   void ctrlArrow(bool direction);
 
 private:
-  core::EventBus &event_bus_;
   const sf::Font &font_;
   sf::Vector2f cursor_size_;
   sf::Vector2f pos_;
@@ -56,7 +48,6 @@ private:
   ui::Cursor cursor_;
 
   std::string text_;
-  const std::string cursor_event_;
 
   bool visible_;
   bool editing_;

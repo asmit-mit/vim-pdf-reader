@@ -14,7 +14,7 @@ Cmdline::Cmdline(
     core::CmdHistory &cmd_history
 )
     : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history), font_(font),
-      label_(font, ":", 16), textbox_(font_, event_bus, 16, ":", "cmdline.typing") {
+      label_(font, ":", 16), textbox_(font_, 16, ":") {
   state_ = CmdlineState::Hidden;
   should_take_input_ = false;
   ignore_next_text_entered_ = false;

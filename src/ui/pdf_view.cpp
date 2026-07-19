@@ -92,25 +92,9 @@ void PDFView::update() {
 
   if (page_loc_changed_) {
     std::cout << "loc changed" << std::endl;
+    sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
     page_loc_changed_ = false;
   }
-
-  const auto bounds = sprite_.getGlobalBounds();
-  const float page_w = bounds.size.x;
-  const float page_h = bounds.size.y;
-
-  if (page_w <= window_size_.x)
-    curr_x_ = window_size_.x / 2.f;
-  else
-    curr_x_ = std::clamp(curr_x_, window_size_.x - page_w / 2.f, page_w / 2.f);
-
-  if (page_h <= window_size_.y)
-    curr_y_ = window_size_.y / 2.f;
-  else
-    curr_y_ =
-        std::clamp(curr_y_, window_size_.y - (page_h / 2.f) - utils::cmdline_height_, page_h / 2.f);
-
-  sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
@@ -174,6 +158,7 @@ void PDFView::setZoom(float new_zoom) {
   event_bus_.emit("statusbar.page_zoom", clamped);
   visual_zoom_ = clamped;
   zoom_timer_.restart();
+  page_loc_changed_ = true;
 }
 
 void PDFView::getPage(std::size_t page_num, float zoom) {
@@ -184,9 +169,26 @@ void PDFView::getPage(std::size_t page_num, float zoom) {
 }
 
 void PDFView::setPageLoc(float x, float y) {
-  curr_x_ = x;
-  curr_y_ = y;
-  page_loc_changed_ = true;
+  const auto bounds = sprite_.getGlobalBounds();
+  const float page_w = bounds.size.x;
+  const float page_h = bounds.size.y;
+
+  if (page_w <= window_size_.x)
+    x = window_size_.x / 2.f;
+  else
+    x = std::clamp(x, window_size_.x - page_w / 2.f, page_w / 2.f);
+
+  if (page_h <= window_size_.y)
+    y = window_size_.y / 2.f;
+  else
+    y = std::clamp(y, window_size_.y - (page_h / 2.f) - utils::cmdline_height_, page_h / 2.f);
+
+  if (curr_x_ != x || curr_y_ != y) {
+    curr_x_ = x;
+    curr_y_ = y;
+    page_loc_changed_ = true;
+  } else
+    page_loc_changed_ = false;
 }
 
 void PDFView::centerPage() {

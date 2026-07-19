@@ -1,13 +1,12 @@
 #pragma once
 
-#include "core/event_bus.h"
 #include "ui/widget.h"
 
 namespace ui {
 
 class Cursor : public Widget {
 public:
-  explicit Cursor(core::EventBus &event_bus, const std::string &typing_event);
+  explicit Cursor();
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
@@ -18,10 +17,9 @@ public:
 
   void start();
   void stop();
+  void typing();
 
 private:
-  core::EventBus &event_bus_;
-
   sf::RectangleShape cursor_;
 
   bool blinking_ = false;

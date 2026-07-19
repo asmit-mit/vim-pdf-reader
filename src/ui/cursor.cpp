@@ -4,17 +4,9 @@
 
 namespace ui {
 
-Cursor::Cursor(core::EventBus &event_bus, const std::string &typing_event) : event_bus_(event_bus) {
+Cursor::Cursor() {
   cursor_.setSize({2.f, 24.f});
   cursor_.setFillColor(utils::hexToRGB(settings::fg_));
-
-  event_bus_.subscribe<bool>(typing_event, [this](bool) {
-    if (!blinking_)
-      return;
-
-    visible_ = true;
-    clock_.restart();
-  });
 }
 
 void Cursor::draw(sf::RenderTarget &window) const {
@@ -52,6 +44,14 @@ void Cursor::start() {
 void Cursor::stop() {
   blinking_ = false;
   visible_ = false;
+}
+
+void Cursor::typing() {
+  if (!blinking_)
+    return;
+
+  visible_ = true;
+  clock_.restart();
 }
 
 } // namespace ui
