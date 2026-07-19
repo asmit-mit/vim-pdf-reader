@@ -42,7 +42,7 @@ private:
   std::size_t render_page_;
   bool has_document_;
   bool should_take_input_;
-  bool page_loc_changed_;
+  bool update_scroll_bar_;
 
   float curr_x_, curr_y_;
   float render_zoom_;

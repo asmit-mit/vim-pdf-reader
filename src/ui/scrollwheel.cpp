@@ -2,17 +2,17 @@
 
 namespace ui {
 
-ScrollWheel::ScrollWheel(core::EventBus &event_bus) : event_bus_(event_bus) {
+ScrollWheel::ScrollWheel() {
   wheel_.setFillColor(sf::Color(255, 255, 255, 180));
 }
 
 void ScrollWheel::setSize(const sf::Vector2f &size) {
   wheel_.setSize(size);
+  timer_.restart();
 }
 
 void ScrollWheel::setPosition(const sf::Vector2f &pos) {
   wheel_.setPosition(pos);
-
   visible_ = true;
   timer_.restart();
 }

@@ -1,15 +1,14 @@
 #pragma once
 
-#include "core/event_bus.h"
 #include "ui/widget.h"
 
-#include <SFML/System/Clock.hpp>
+#include <SFML/Graphics.hpp>
 
 namespace ui {
 
 class ScrollWheel : public Widget {
 public:
-  explicit ScrollWheel(core::EventBus &event_bus);
+  explicit ScrollWheel();
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
@@ -19,8 +18,6 @@ public:
   void setPosition(const sf::Vector2f &pos);
 
 private:
-  core::EventBus &event_bus_;
-
   sf::RectangleShape wheel_;
 
   bool visible_ = false;
