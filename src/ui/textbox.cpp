@@ -5,15 +5,8 @@
 
 namespace ui {
 
-Textbox::Textbox(
-    const sf::Font &font,
-    core::EventBus &event_bus,
-    int char_size,
-    const std::string &input_string,
-    const std::string &typing_event
-)
-    : event_bus_(event_bus), font_(font), display_text_(font, input_string, char_size),
-      cursor_(event_bus, typing_event), text_(input_string), cursor_event_(typing_event) {
+Textbox::Textbox(const sf::Font &font, int char_size, const std::string &input_string)
+    : font_(font), display_text_(font, input_string, char_size), text_(input_string) {
   visible_ = false;
   editing_ = false;
   text_dirty_ = false;
@@ -105,14 +98,14 @@ void Textbox::handleEvent(const sf::Event &event) {
       setCursorPosition(cursor_pos_ + 1);
       cursor_dirty_ = true;
     }
-    event_bus_.emit(cursor_event_, true);
+    cursor_.typing();
   } else if (text) {
     if (text->unicode >= 32 && text->unicode < 127) {
       text_.insert(text_.begin() + cursor_pos_, text->unicode);
       cursor_pos_++;
       text_dirty_ = true;
     }
-    event_bus_.emit(cursor_event_, true);
+    cursor_.typing();
   }
 }
 
