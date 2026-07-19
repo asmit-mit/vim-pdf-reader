@@ -14,16 +14,19 @@ public:
   void update() override;
   void handleEvent(const sf::Event &event) override {}
 
+  void setFillColor(const sf::Color &color);
   void setSize(const sf::Vector2f &size);
   void setPosition(const sf::Vector2f &pos);
 
 private:
   sf::RectangleShape wheel_;
+  sf::Clock timer_;
+  sf::Color base_color_;
 
   bool visible_ = false;
-  sf::Clock timer_;
 
   static constexpr float delay_ = 1.f;
+  static constexpr float fade_duration_ = 0.25f;
 };
 
 } // namespace ui

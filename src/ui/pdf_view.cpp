@@ -17,7 +17,10 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   render_page_ = 0;
   has_document_ = false;
   should_take_input_ = false;
-  update_scroll_bar_ = false;
+  update_scroll_bar_horizontal_ = false;
+
+  horizontal_wheel_.setFillColor(utils::hexToRGB(settings::scrollwheel_color_));
+  vertical_wheel_.setFillColor(utils::hexToRGB(settings::scrollwheel_color_));
 
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
@@ -69,12 +72,15 @@ void PDFView::draw(sf::RenderTarget &window) const {
   if (!has_document_)
     return;
   window.draw(sprite_);
+  horizontal_wheel_.draw(window);
+  vertical_wheel_.draw(window);
 }
 
 void PDFView::update() {
   if (!has_document_)
     return;
 
+  texture_.setSmooth(render_zoom_ != visual_zoom_);
   const float scale = visual_zoom_ / render_zoom_;
   sprite_.setScale({scale, scale});
 
@@ -90,12 +96,45 @@ void PDFView::update() {
     event_bus_.emit("statusbar.page_number", current_page_);
   }
 
-  if (update_scroll_bar_) {
-    std::cout << "loc changed" << std::endl;
-    update_scroll_bar_ = false;
+  const auto bounds = sprite_.getLocalBounds();
+
+  if (update_scroll_bar_horizontal_) {
+    const float page_w = bounds.size.x * scale;
+    float scroll_width = (window_size_.x * window_size_.x) / (page_w);
+    horizontal_wheel_.setSize({scroll_width, scrollwheel_width_});
+
+    float scroll_x =
+        map(curr_x_,
+            window_size_.x - page_w / 2.f,
+            page_w / 2.f,
+            window_size_.x - scroll_width,
+            0.f);
+
+    horizontal_wheel_.setPosition(
+        {scroll_x, window_size_.y - utils::cmdline_height_ - scrollwheel_width_}
+    );
+    update_scroll_bar_horizontal_ = false;
+  }
+
+  if (update_scroll_bar_vertical_) {
+    const float page_h = bounds.size.y * scale;
+    float scroll_height = (window_size_.y * window_size_.y) / (page_h);
+    vertical_wheel_.setSize({scrollwheel_width_, scroll_height});
+
+    float scroll_y =
+        map(curr_y_,
+            window_size_.y - page_h / 2.f - utils::cmdline_height_,
+            page_h / 2.f,
+            window_size_.y - utils::cmdline_height_ - scroll_height,
+            0.f);
+
+    vertical_wheel_.setPosition({window_size_.x - scrollwheel_width_, scroll_y});
+    update_scroll_bar_vertical_ = false;
   }
 
   sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
+  horizontal_wheel_.update();
+  vertical_wheel_.update();
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
@@ -161,11 +200,21 @@ void PDFView::setZoom(float new_zoom) {
   visual_zoom_ = clamped;
   zoom_timer_.restart();
   setPageLoc(curr_x_, curr_y_);
-  update_scroll_bar_ = true;
+
+  const float scale = visual_zoom_ / render_zoom_;
+  const auto bounds = sprite_.getLocalBounds();
+  update_scroll_bar_horizontal_ = bounds.size.x * scale > window_size_.x;
+  update_scroll_bar_vertical_ = bounds.size.y * scale > window_size_.y;
+}
+
+float PDFView::map(float value, float src_min, float src_max, float dst_min, float dst_max) {
+  float t = (value - src_min) / (src_max - src_min);
+  return std::lerp(dst_min, dst_max, t);
 }
 
 void PDFView::getPage(std::size_t page_num, float zoom) {
   texture_ = renderer_.render(page_num, zoom);
+  texture_.setSmooth(false);
   sprite_.setTexture(texture_, true);
   sprite_.setScale({1.f, 1.f});
   centerPage();
@@ -188,8 +237,8 @@ void PDFView::setPageLoc(float x, float y) {
   else
     y = std::clamp(y, window_size_.y - (page_h / 2.f) - utils::cmdline_height_, page_h / 2.f);
 
-  if (curr_x_ != x || curr_y_ != y)
-    update_scroll_bar_ = true;
+  update_scroll_bar_horizontal_ = curr_x_ != x && window_size_.x <= page_w;
+  update_scroll_bar_vertical_ = curr_y_ != y && window_size_.y <= page_h;
 
   curr_x_ = x;
   curr_y_ = y;

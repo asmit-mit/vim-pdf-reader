@@ -1,4 +1,4 @@
-project('vim-reader', 'cpp', default_options: ['cpp_std=c++23'])
+project('vim-pdf-reader', 'cpp', default_options: ['cpp_std=c++23'])
 project_name = meson.project_name()
 
 sfml_dep = dependency('sfml-graphics', required: true)
