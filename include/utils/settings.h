@@ -12,4 +12,10 @@ constexpr uint32_t scrollwheel_color_ = 0x458588;
 
 constexpr float delta_zoom_ = 0.1f;
 
+constexpr char font_normal_[] =
+    "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Light.ttf";
+constexpr char font_bold_[] = "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Bold.ttf";
+constexpr char font_italic_[] =
+    "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Italic.ttf";
+
 } // namespace settings

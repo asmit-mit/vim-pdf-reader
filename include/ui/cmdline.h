@@ -3,6 +3,7 @@
 #include "core/cmd_history.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
+#include "ui/completions.h"
 #include "ui/textbox.h"
 #include "ui/widget.h"
 
@@ -17,7 +18,9 @@ enum class CmdlineState {
 class Cmdline : public Widget {
 public:
   explicit Cmdline(
-      const sf::Font &font,
+      const sf::Font &font_normal,
+      const sf::Font &font_bold,
+      const sf::Font &font_italic,
       core::EventBus &event_bus,
       core::CmdProcessor &cmd_processor,
       core::CmdHistory &cmd_history
@@ -40,9 +43,11 @@ private:
 
   sf::Text label_;
   ui::Textbox textbox_;
+  ui::Completions completions_;
   sf::RectangleShape display_area_;
   CmdlineState state_;
 
+  std::string string_at_last_tab_;
   bool ignore_next_text_entered_;
   bool should_take_input_;
   float curr_x_, curr_y_;

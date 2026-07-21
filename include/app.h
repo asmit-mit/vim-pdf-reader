@@ -22,7 +22,9 @@ private:
 private:
   sf::RenderWindow window_;
   sf::View view_;
-  sf::Font font_;
+  sf::Font font_normal_;
+  sf::Font font_bold_;
+  sf::Font font_italic_;
 
   core::EventBus event_bus_;
   core::CmdProcessor cmd_processor_;
