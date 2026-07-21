@@ -31,7 +31,8 @@ Cmdline::Cmdline(
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
   display_area_.setSize({200.0, height_});
 
-  completions_.setTextColor(utils::hexToRGB(settings::fg_));
+  completions_.setCmdColor(utils::hexToRGB(settings::fg_));
+  completions_.setDescColor(utils::hexToRGB(settings::completions_desc_fg_));
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     should_take_input_ = focus == ui::UIElements::Cmdline;
@@ -156,8 +157,8 @@ void Cmdline::handleEvent(const sf::Event &event) {
         if (!completions_.isVisible()) {
           const auto &list = cmd_processor_.complete(textbox_.getText());
           if (list.size() == 1) {
-            textbox_.setText(list[0]);
-            textbox_.setCursorPosition(list[0].size());
+            textbox_.setText(list[0].first);
+            textbox_.setCursorPosition(list[0].first.size());
           } else {
             completions_.setCompletionList(list);
             completions_.show();
@@ -173,8 +174,8 @@ void Cmdline::handleEvent(const sf::Event &event) {
           } else {
             const auto &list = cmd_processor_.complete(textbox_.getText());
             if (list.size() == 1) {
-              textbox_.setText(list[0]);
-              textbox_.setCursorPosition(list[0].size());
+              textbox_.setText(list[0].first);
+              textbox_.setCursorPosition(list[0].first.size());
             } else {
               completions_.setCompletionList(list);
               completions_.show();

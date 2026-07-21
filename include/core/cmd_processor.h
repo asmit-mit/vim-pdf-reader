@@ -12,7 +12,7 @@ public:
   CmdProcessor(core::EventBus &event_bus);
 
   void runCommand(const std::string &cmd);
-  std::vector<std::string> complete(const std::string &prefix);
+  std::vector<std::pair<std::string, std::string>> complete(const std::string &prefix);
 
 private:
   core::EventBus &event_bus_;

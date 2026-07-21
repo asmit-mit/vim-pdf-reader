@@ -16,7 +16,8 @@ public:
   void onResize(const sf::Vector2f &size);
 
   void setFillColor(const sf::Color &color);
-  void setTextColor(const sf::Color &color);
+  void setCmdColor(const sf::Color &color);
+  void setDescColor(const sf::Color &color);
   void setPosition(const sf::Vector2f &pos);
 
   bool isVisible();
@@ -26,18 +27,22 @@ public:
   void moveDown();
   std::string &getSelectedText();
 
-  void setCompletionList(const std::vector<std::string> &list);
+  void setCompletionList(const std::vector<std::pair<std::string, std::string>> &list);
   void clear();
 
 private:
-  std::vector<std::string> completions_;
-  std::vector<sf::Text> display_list_;
+  std::vector<std::pair<std::string, std::string>> completions_;
+  std::vector<sf::Text> display_cmd_list_;
+  std::vector<sf::Text> display_desc_list_;
   sf::RectangleShape display_area_;
+  sf::RectangleShape selected_cmd_area_;
+  sf::RectangleShape selected_desc_area_;
   sf::Vector2f window_size_;
 
   const sf::Font &cmd_font_;
   const sf::Font &desc_font_;
-  sf::Color fg_color_;
+  sf::Color cmd_fg_color_;
+  sf::Color desc_fg_color_;
 
   std::size_t first_visible_;
   std::size_t selected_;

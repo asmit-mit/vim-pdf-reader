@@ -57,9 +57,14 @@ void CmdProcessor::runCommand(const std::string &cmd) {
     event_bus_.emit("cmd_processor.quit", true);
 }
 
-std::vector<std::string> CmdProcessor::complete(const std::string &prefix) {
-  if (prefix.size() == 0)
-    return autocomplete_.complete("");
+std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const std::string &prefix) {
+  if (prefix.size() == 0) {
+    const auto &cmd_list = autocomplete_.complete("");
+    std::vector<std::pair<std::string, std::string>> completions;
+    for (const auto &cmd : cmd_list)
+      completions.emplace_back(cmd, commands_[cmd].second);
+    return completions;
+  }
 
   std::istringstream iss(prefix);
 
@@ -72,7 +77,12 @@ std::vector<std::string> CmdProcessor::complete(const std::string &prefix) {
   if (argv.size() > 1)
     return {};
 
-  return autocomplete_.complete(argv[0]);
+  const auto &cmd_list = autocomplete_.complete(argv[0]);
+  std::vector<std::pair<std::string, std::string>> completions;
+  for (const auto &cmd : cmd_list)
+    completions.emplace_back(cmd, commands_[cmd].second);
+
+  return completions;
 }
 
 } // namespace core
