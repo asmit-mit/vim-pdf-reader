@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "core/event_bus.h"
+#include "utils/trie.h"
 
 namespace core {
 
@@ -11,11 +12,13 @@ public:
   CmdProcessor(core::EventBus &event_bus);
 
   void runCommand(const std::string &cmd);
+  std::vector<std::pair<std::string, std::string>> complete(const std::string &prefix);
 
 private:
   core::EventBus &event_bus_;
+  utils::Trie autocomplete_;
 
-  std::unordered_map<std::string, int> commands_;
+  std::unordered_map<std::string, std::pair<int, std::string>> commands_;
 };
 
 } // namespace core

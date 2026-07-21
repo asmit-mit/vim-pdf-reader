@@ -32,7 +32,7 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
           getPage(current_page_, render_zoom_);
           setPageLoc(window_size_.x / 2.f, window_size_.y / 2.f);
 
-          event_bus_.emit("statusbar.pdf_path", filepath);
+          event_bus_.emit("statusbar.pdf_path", utils::resolvePath(filepath));
           event_bus_.emit("statusbar.page_number", 1);
           event_bus_.emit("statusbar.total_pages", document_.size());
           event_bus_.emit("statusbar.page_zoom", visual_zoom_);

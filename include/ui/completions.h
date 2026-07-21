@@ -1,0 +1,57 @@
+#pragma once
+
+#include "ui/widget.h"
+
+#include <SFML/Graphics.hpp>
+
+namespace ui {
+
+class Completions : public Widget {
+public:
+  explicit Completions(const sf::Font &cmd_font, const sf::Font &desc_font, int font_size);
+
+  void draw(sf::RenderTarget &window) const override;
+  void update() override;
+  void handleEvent(const sf::Event &event) override;
+  void onResize(const sf::Vector2f &size);
+
+  void setFillColor(const sf::Color &color);
+  void setCmdColor(const sf::Color &color);
+  void setDescColor(const sf::Color &color);
+  void setPosition(const sf::Vector2f &pos);
+
+  bool isVisible();
+  void show();
+  void hide();
+  void moveUp();
+  void moveDown();
+  std::string &getSelectedText();
+
+  void setCompletionList(const std::vector<std::pair<std::string, std::string>> &list);
+  void clear();
+
+private:
+  std::vector<std::pair<std::string, std::string>> completions_;
+  std::vector<sf::Text> display_cmd_list_;
+  std::vector<sf::Text> display_desc_list_;
+  sf::RectangleShape display_area_;
+  sf::RectangleShape selected_cmd_area_;
+  sf::RectangleShape selected_desc_area_;
+  sf::Vector2f window_size_;
+
+  const sf::Font &cmd_font_;
+  const sf::Font &desc_font_;
+  sf::Color cmd_fg_color_;
+  sf::Color desc_fg_color_;
+
+  std::size_t first_visible_;
+  std::size_t selected_;
+
+  int font_size_;
+  bool visible_;
+  bool list_dirty_;
+
+  static constexpr std::size_t max_list_items_ = 6;
+};
+
+} // namespace ui
