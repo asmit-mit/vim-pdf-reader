@@ -41,26 +41,28 @@ void Completions::update() {
       {0, window_size_.y - display_area_.getSize().y - 2 * utils::cmdline_height_ + 1.f}
   );
 
-  if (list_dirty_) {
-    const std::size_t last = std::min(first_visible_ + max_list_items_, completions_.size());
+  const std::size_t last = std::min(first_visible_ + max_list_items_, completions_.size());
 
+  if (list_dirty_) {
     std::size_t row = 0;
     for (std::size_t i = first_visible_; i < last; ++i, ++row) {
       display_cmd_list_[row].setString(completions_[i].first);
-      display_cmd_list_[row].setPosition(
-          {utils::padding, display_area_.getPosition().y + row * utils::cmdline_height_}
-      );
-      display_cmd_list_[row].setFillColor(cmd_fg_color_);
-
       display_desc_list_[row].setString(completions_[i].second);
-      display_desc_list_[row].setPosition(
-          {window_size_.x - display_desc_list_[row].getGlobalBounds().size.x - utils::padding,
-           display_area_.getPosition().y + row * utils::cmdline_height_}
-      );
-      display_desc_list_[row].setFillColor(desc_fg_color_);
     }
 
     list_dirty_ = false;
+  }
+
+  std::size_t row = 0;
+  for (std::size_t i = first_visible_; i < last; ++i, ++row) {
+    const float y_pos = display_area_.getPosition().y + row * utils::cmdline_height_;
+    display_cmd_list_[row].setPosition({utils::padding, y_pos});
+    display_cmd_list_[row].setFillColor(cmd_fg_color_);
+
+    display_desc_list_[row].setPosition(
+        {window_size_.x - display_desc_list_[row].getGlobalBounds().size.x - utils::padding, y_pos}
+    );
+    display_desc_list_[row].setFillColor(desc_fg_color_);
   }
 
   selected_cmd_area_.setPosition(

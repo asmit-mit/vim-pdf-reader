@@ -159,6 +159,7 @@ void Textbox::reset() {
 
 void Textbox::setText(const std::string &text) {
   text_ = text;
+  setCursorPosition(text_.size());
   text_dirty_ = true;
 }
 

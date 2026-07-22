@@ -124,7 +124,6 @@ void Cmdline::handleEvent(const sf::Event &event) {
       } else if (key->code == sf::Keyboard::Key::Enter) {
         if (completions_.isVisible()) {
           textbox_.setText(completions_.getSelectedText());
-          textbox_.setCursorPosition(textbox_.getText().size());
         } else {
           cmd_history_.add(textbox_.getText());
           try {
@@ -136,59 +135,28 @@ void Cmdline::handleEvent(const sf::Event &event) {
           } catch (const std::runtime_error &e) {
             state_ = CmdlineState::Status;
             textbox_.setText(std::string(e.what()) + " (press \":\" to continue...)");
-            textbox_.setCursorPosition(textbox_.getText().size());
             textbox_.stopEditing();
           }
         }
         completions_.clear();
         completions_.hide();
-      } else if (
-          (key->code == sf::Keyboard::Key::Up) ||
-          (key->code == sf::Keyboard::Key::P && key->control)
-      ) {
+      } else if (key->code == sf::Keyboard::Key::P && key->control) {
         textbox_.setText(cmd_history_.getPrevious());
-        textbox_.setCursorPosition(textbox_.getText().size());
-      } else if (
-          key->code == sf::Keyboard::Key::Down ||
-          (key->code == sf::Keyboard::Key::N && key->control)
-      ) {
+      } else if (key->code == sf::Keyboard::Key::N && key->control) {
         textbox_.setText(cmd_history_.getNext());
-        textbox_.setCursorPosition(textbox_.getText().size());
       } else if (key->code == sf::Keyboard::Key::Tab) {
-        if (!completions_.isVisible()) {
-          const auto &list = cmd_processor_.complete(textbox_.getText());
-          if (list.empty()) {
-            completions_.clear();
-            completions_.hide();
-          } else if (list.size() == 1) {
-            textbox_.setText(list[0].first);
-            textbox_.setCursorPosition(list[0].first.size());
-          } else {
-            completions_.setCompletionList(list);
-            completions_.show();
-          }
-        } else {
+        if (!completions_.isVisible())
+          refreshCompletions();
+        else {
           if (key->shift) {
             completions_.moveUp();
             return;
           }
 
-          if (string_at_last_tab_ == textbox_.getText()) {
+          if (string_at_last_tab_ == textbox_.getText())
             completions_.moveDown();
-          } else {
-            const auto &list = cmd_processor_.complete(textbox_.getText());
-            if (list.empty()) {
-              completions_.clear();
-              completions_.hide();
-            } else if (list.size() == 1) {
-              textbox_.setText(list[0].first);
-              textbox_.setCursorPosition(list[0].first.size());
-              completions_.clear();
-              completions_.hide();
-            } else {
-              completions_.setCompletionList(list);
-              completions_.show();
-            }
+          else {
+            refreshCompletions();
             string_at_last_tab_ = textbox_.getText();
           }
         }
@@ -205,6 +173,26 @@ void Cmdline::onResize(const sf::Vector2f &size) {
   curr_y_ = size.y - height_;
   display_area_.setSize({size.x, height_});
   completions_.onResize(size);
+}
+
+void Cmdline::refreshCompletions() {
+  const auto &list = cmd_processor_.complete(textbox_.getText());
+
+  if (list.empty()) {
+    completions_.clear();
+    completions_.hide();
+    return;
+  }
+
+  if (list.size() == 1) {
+    textbox_.setText(list[0].first);
+    completions_.clear();
+    completions_.hide();
+    return;
+  }
+
+  completions_.setCompletionList(list);
+  completions_.show();
 }
 
 } // namespace ui

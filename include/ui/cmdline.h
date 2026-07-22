@@ -33,7 +33,7 @@ public:
   void onResize(const sf::Vector2f &size);
 
 private:
-  void handleSpecialBackspace();
+  void refreshCompletions();
 
 private:
   core::EventBus &event_bus_;
