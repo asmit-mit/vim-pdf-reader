@@ -15,7 +15,7 @@ const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rot
     throw std::out_of_range("Page index out of range");
 
   fz_matrix ctm = fz_scale(zoom, zoom);
-  ctm = fz_pre_rotate(ctm, rotate);
+  ctm = fz_pre_rotate(ctm, rotate * 90.f);
 
   fz_pixmap *pix;
   fz_try(ctx) pix = fz_new_pixmap_from_page_number(ctx, doc, page_idx, ctm, fz_device_rgb(ctx), 0);

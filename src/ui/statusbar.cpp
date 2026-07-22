@@ -58,7 +58,7 @@ void Statusbar::draw(sf::RenderTarget &window) const {
 void Statusbar::update() {
   if (page_details_changed_) {
     display_page_num_.setString(
-        "[" + std::to_string(page_idx_ + 1) + "/" + std::to_string(total_pages_) + "]"
+        "[" + std::to_string(page_idx_) + "/" + std::to_string(total_pages_) + "]"
     );
     page_details_changed_ = false;
   }

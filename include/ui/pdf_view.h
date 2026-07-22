@@ -23,7 +23,8 @@ public:
 
 private:
   void setZoom(float zoom);
-  void getPage(std::size_t page_num, float zoom);
+  void setRotate(int rotate);
+  void getPage(std::size_t page_num, float zoom, int rotate);
   void centerPage();
   void resetView();
   void setPageLoc(float x, float y);
@@ -38,7 +39,7 @@ private:
 
   sf::Texture texture_;
   sf::Sprite sprite_;
-  sf::Clock zoom_timer_;
+  sf::Clock page_update_timer_;
   sf::Keyboard::Key prev_key_;
   sf::Vector2f window_size_;
 
@@ -52,6 +53,8 @@ private:
   float curr_x_, curr_y_;
   float render_zoom_;
   float visual_zoom_;
+  int render_rotate_;
+  int visual_rotate_;
 
   static constexpr float scrollwheel_width_ = 8.f;
   static constexpr float zoom_dobounce_ms_ = 500.f;
