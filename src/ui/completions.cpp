@@ -7,6 +7,7 @@ namespace ui {
 Completions::Completions(const sf::Font &cmd_font, const sf::Font &desc_font, int font_size)
     : cmd_font_(cmd_font), desc_font_(desc_font) {
   list_dirty_ = false;
+  visible_ = false;
   first_visible_ = 0;
   selected_ = 0;
   display_area_.setFillColor(utils::hexToRGB(settings::status_bg_));
@@ -57,29 +58,27 @@ void Completions::update() {
            display_area_.getPosition().y + row * utils::cmdline_height_}
       );
       display_desc_list_[row].setFillColor(desc_fg_color_);
-
-      if (i == selected_) {
-        selected_cmd_area_.setPosition(
-            {utils::padding - 2.f, display_cmd_list_[row].getPosition().y}
-        );
-        selected_cmd_area_.setSize(
-            {display_cmd_list_[row].getGlobalBounds().size.x + 6.f, utils::cmdline_height_}
-        );
-
-        selected_desc_area_.setPosition(
-            {window_size_.x - display_desc_list_[row].getGlobalBounds().size.x - utils::padding -
-                 4.f,
-             display_desc_list_[row].getPosition().y}
-        );
-        selected_desc_area_.setSize(
-            {display_desc_list_[row].getGlobalBounds().size.x + utils::padding,
-             utils::cmdline_height_}
-        );
-      }
     }
 
     list_dirty_ = false;
   }
+
+  selected_cmd_area_.setPosition(
+      {utils::padding - 2.f, display_cmd_list_[selected_].getPosition().y}
+  );
+  selected_cmd_area_.setSize(
+      {display_cmd_list_[selected_].getGlobalBounds().size.x + 6.f, utils::cmdline_height_}
+  );
+
+  selected_desc_area_.setPosition(
+      {window_size_.x - display_desc_list_[selected_].getGlobalBounds().size.x - utils::padding -
+           4.f,
+       display_desc_list_[selected_].getPosition().y}
+  );
+  selected_desc_area_.setSize(
+      {display_desc_list_[selected_].getGlobalBounds().size.x + utils::padding,
+       utils::cmdline_height_}
+  );
 }
 
 void Completions::handleEvent(const sf::Event &event) {}
@@ -136,10 +135,10 @@ void Completions::moveUp() {
   }
 
   selected_--;
-  if (selected_ < first_visible_)
+  if (selected_ < first_visible_) {
     first_visible_--;
-
-  list_dirty_ = true;
+    list_dirty_ = true;
+  }
 }
 
 void Completions::moveDown() {
@@ -154,10 +153,10 @@ void Completions::moveDown() {
   }
 
   selected_++;
-  if (selected_ >= first_visible_ + max_list_items_)
+  if (selected_ >= first_visible_ + max_list_items_) {
+    list_dirty_ = true;
     first_visible_++;
-
-  list_dirty_ = true;
+  }
 }
 
 bool Completions::isVisible() {

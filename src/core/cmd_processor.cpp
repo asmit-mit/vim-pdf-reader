@@ -11,6 +11,9 @@ CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
   commands_["open"] = {2, "Open document with absolute path"};
   commands_["close"] = {1, "Close current document"};
   commands_["quit"] = {1, "Quit app"};
+  // commands_["blist"] = {1, "Quit app"};
+  // commands_["badd"] = {1, "Quit app"};
+  // commands_["bdel"] = {1, "Quit app"};
 
   for (const auto &[command, _] : commands_)
     autocomplete_.insert(command);

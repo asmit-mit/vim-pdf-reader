@@ -140,6 +140,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
             textbox_.stopEditing();
           }
         }
+        completions_.clear();
         completions_.hide();
       } else if (
           (key->code == sf::Keyboard::Key::Up) ||
@@ -156,7 +157,10 @@ void Cmdline::handleEvent(const sf::Event &event) {
       } else if (key->code == sf::Keyboard::Key::Tab) {
         if (!completions_.isVisible()) {
           const auto &list = cmd_processor_.complete(textbox_.getText());
-          if (list.size() == 1) {
+          if (list.empty()) {
+            completions_.clear();
+            completions_.hide();
+          } else if (list.size() == 1) {
             textbox_.setText(list[0].first);
             textbox_.setCursorPosition(list[0].first.size());
           } else {
@@ -173,13 +177,19 @@ void Cmdline::handleEvent(const sf::Event &event) {
             completions_.moveDown();
           } else {
             const auto &list = cmd_processor_.complete(textbox_.getText());
-            if (list.size() == 1) {
+            if (list.empty()) {
+              completions_.clear();
+              completions_.hide();
+            } else if (list.size() == 1) {
               textbox_.setText(list[0].first);
               textbox_.setCursorPosition(list[0].first.size());
+              completions_.clear();
+              completions_.hide();
             } else {
               completions_.setCompletionList(list);
               completions_.show();
             }
+            string_at_last_tab_ = textbox_.getText();
           }
         }
       }
