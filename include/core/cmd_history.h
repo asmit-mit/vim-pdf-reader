@@ -8,7 +8,6 @@ namespace core {
 class CmdHistory {
 public:
   CmdHistory();
-  ~CmdHistory();
 
   void reset();
   void add(const std::string &cmd);

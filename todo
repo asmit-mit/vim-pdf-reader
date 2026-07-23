@@ -1,0 +1,5 @@
+- multi page
+- get page text and other info
+- add selecting text
+- refactor pdf backend to cache pages
+- add highlighting text

@@ -6,6 +6,10 @@ Trie::Trie() {
   head_ = new TrieNode();
 }
 
+Trie::~Trie() {
+  destroy(head_);
+}
+
 void Trie::insert(const std::string &word) {
   TrieNode *node = head_;
 
@@ -35,6 +39,16 @@ std::vector<std::string> Trie::complete(const std::string &prefix) const {
   backtrack(node, partial, matches);
 
   return matches;
+}
+
+void Trie::destroy(TrieNode *node) {
+  if (!node)
+    return;
+
+  for (TrieNode *child : node->children)
+    destroy(child);
+
+  delete node;
 }
 
 void Trie::backtrack(TrieNode *node, std::string &curr, std::vector<std::string> &matches) const {

@@ -4,7 +4,8 @@
 
 App::App()
     : font_normal_(settings::font_normal_), font_bold_(settings::font_bold_),
-      font_italic_(settings::font_italic_), cmd_processor_(event_bus_), renderer_(document_),
+      font_italic_(settings::font_italic_), cmd_processor_(event_bus_), document_(),
+      renderer_(document_),
       cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_),
       statusbar_(font_normal_, event_bus_), pdf_view_(document_, renderer_, event_bus_) {
   sf::ContextSettings settings;
@@ -23,7 +24,10 @@ App::App()
   statusbar_.onResize(view_.getSize());
   pdf_view_.onResize(view_.getSize());
 
-  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) { window_.close(); });
+  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) {
+    document_.closeDocument();
+    window_.close();
+  });
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     focus_ = focus;

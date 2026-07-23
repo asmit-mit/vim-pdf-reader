@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 
-#include "SFML/Graphics.hpp"
+#include <SFML/Graphics.hpp>
 
 namespace utils {
 

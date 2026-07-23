@@ -12,6 +12,7 @@ sources = files(
   'src/core/cmd_history.cpp',
   'src/main.cpp',
   'src/pdf/pdf_document.cpp',
+  'src/pdf/pdf_page.cpp',
   'src/pdf/pdf_renderer.cpp',
   'src/ui/cmdline.cpp',
   'src/ui/cursor.cpp',

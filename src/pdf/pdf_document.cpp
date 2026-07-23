@@ -1,10 +1,11 @@
 #include <stdexcept>
 
 #include "pdf/pdf_document.h"
+#include "utils/settings.h"
 
 namespace pdf {
 
-PDFDocument::PDFDocument() {
+PDFDocument::PDFDocument() : page_cache_(settings::cache_size_) {
   ctx_ = fz_new_context(nullptr, nullptr, FZ_STORE_DEFAULT);
   if (!ctx_)
     throw std::runtime_error("Failed to create MuPDF context");
@@ -34,11 +35,16 @@ void PDFDocument::openDocument(const std::string &filepath) {
 
 void PDFDocument::closeDocument() {
   if (doc_) {
+    page_cache_.clear();
     fz_drop_document(ctx_, doc_);
     doc_ = nullptr;
   }
 
   page_count_ = 0;
+}
+
+PageCache &PDFDocument::getCache() {
+  return page_cache_;
 }
 
 std::size_t PDFDocument::size() const {

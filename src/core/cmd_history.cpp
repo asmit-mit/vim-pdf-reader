@@ -15,10 +15,6 @@ CmdHistory::CmdHistory() {
     add(line);
 }
 
-CmdHistory::~CmdHistory() {
-  save();
-}
-
 void CmdHistory::reset() {
   curr_idx_ = history_.size();
 }
@@ -33,6 +29,7 @@ void CmdHistory::add(const std::string &cmd) {
     history_.pop_front();
 
   reset();
+  save();
 }
 
 std::string CmdHistory::getNext() {
