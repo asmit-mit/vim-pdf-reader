@@ -94,11 +94,11 @@ void PDFView::update() {
     event_bus_.emit("statusbar.page_number", current_page_ + 1);
   }
 
-  texture_.setSmooth(render_zoom_ != visual_zoom_ || render_rotate_ != visual_rotate_);
   const float scale = visual_zoom_ / render_zoom_;
   const int delta = (visual_rotate_ - render_rotate_ + 4) % 4;
   sprite_.setScale({scale, scale});
   sprite_.setRotation(sf::degrees(delta * 90.f));
+  sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
 
   if (update_scroll_bar_horizontal_) {
     const auto bounds = sprite_.getGlobalBounds();
@@ -136,7 +136,6 @@ void PDFView::update() {
     update_scroll_bar_vertical_ = false;
   }
 
-  sprite_.setPosition({std::round(curr_x_), std::round(curr_y_)});
   horizontal_wheel_.update();
   vertical_wheel_.update();
 }
@@ -219,15 +218,13 @@ void PDFView::setRotate(int rotate) {
   if (!has_document_)
     return;
 
-  const int rot = (rotate % 4 + 4) % 4;
-
-  visual_rotate_ = rot;
+  visual_rotate_ = (rotate % 4 + 4) % 4;
   page_update_timer_.restart();
+
   setPageLoc(curr_x_, curr_y_);
 
-  const auto bounds = sprite_.getGlobalBounds();
-  update_scroll_bar_horizontal_ = bounds.size.x > window_size_.x;
-  update_scroll_bar_vertical_ = bounds.size.y > window_size_.y;
+  update_scroll_bar_horizontal_ = true;
+  update_scroll_bar_vertical_ = true;
 }
 
 float PDFView::map(float value, float src_min, float src_max, float dst_min, float dst_max) {
@@ -245,22 +242,28 @@ void PDFView::getPage(std::size_t page_num, float zoom, int rotate) {
 
 void PDFView::setPageLoc(float x, float y) {
   const float scale = visual_zoom_ / render_zoom_;
-  const auto bounds = sprite_.getLocalBounds();
-  const float page_w = bounds.size.x * scale;
-  const float page_h = bounds.size.y * scale;
+  const int delta = (visual_rotate_ - render_rotate_ + 4) % 4;
+
+  sprite_.setScale({scale, scale});
+  sprite_.setRotation(sf::degrees(delta * 90.f));
+
+  const auto bounds = sprite_.getGlobalBounds();
+  const float page_w = bounds.size.x;
+  const float page_h = bounds.size.y;
+  const float viewport_h = window_size_.y - utils::cmdline_height_;
 
   if (page_w <= window_size_.x)
-    x = window_size_.x / 2.f;
+    x = window_size_.x * 0.5f;
   else
-    x = std::clamp(x, window_size_.x - page_w / 2.f, page_w / 2.f);
+    x = std::clamp(x, window_size_.x - page_w * 0.5f, page_w * 0.5f);
 
-  if (page_h <= window_size_.y)
-    y = window_size_.y / 2.f;
+  if (page_h <= viewport_h)
+    y = viewport_h * 0.5f;
   else
-    y = std::clamp(y, window_size_.y - (page_h / 2.f) - utils::cmdline_height_, page_h / 2.f);
+    y = std::clamp(y, viewport_h - page_h * 0.5f, page_h * 0.5f);
 
-  update_scroll_bar_horizontal_ = curr_x_ != x && window_size_.x <= page_w;
-  update_scroll_bar_vertical_ = curr_y_ != y && window_size_.y <= page_h;
+  update_scroll_bar_horizontal_ = curr_x_ != x && page_w > window_size_.x;
+  update_scroll_bar_vertical_ = curr_y_ != y && page_h > viewport_h;
 
   curr_x_ = x;
   curr_y_ = y;
