@@ -25,7 +25,8 @@ App::App()
   pdf_view_.onResize(view_.getSize());
 
   event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) {
-    event_bus_.emit("cmd_processor.close_document", true);
+    renderer_.clearCache();
+    document_.closeDocument();
     window_.close();
   });
 

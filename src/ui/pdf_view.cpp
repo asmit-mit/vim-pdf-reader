@@ -47,7 +47,7 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
           setPageLoc(window_size_.x / 2.f, window_size_.y / 2.f);
 
           event_bus_.emit("statusbar.pdf_path", utils::resolvePath(filepath));
-          event_bus_.emit("statusbar.page_number", 1);
+          event_bus_.emit("statusbar.page_number", current_page_ + 1);
           event_bus_.emit("statusbar.total_pages", document_.size());
           event_bus_.emit("statusbar.page_zoom", visual_zoom_);
         } catch (const std::runtime_error &e) {
@@ -59,6 +59,7 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   event_bus_.subscribe<bool>("cmd_processor.close_document", [this](bool close_document) {
     if (!has_document_)
       return;
+    renderer_.clearCache();
     document_.closeDocument();
     resetView();
     event_bus_.emit("statusbar.pdf_path", std::string("[Nothing Open Yet]"));
@@ -265,7 +266,7 @@ void PDFView::syncScaleRotation() {
 
   if (!cached_target_size_valid_ || cached_size_page_ != current_page_ ||
       cached_size_zoom_ != visual_zoom_ || cached_size_rotate_ != visual_rotate_) {
-    cached_target_size_ = renderer_.pageSize(current_page_, visual_zoom_, visual_rotate_);
+    cached_target_size_ = renderer_.getPageSize(current_page_, visual_zoom_, visual_rotate_);
     cached_size_page_ = current_page_;
     cached_size_zoom_ = visual_zoom_;
     cached_size_rotate_ = visual_rotate_;

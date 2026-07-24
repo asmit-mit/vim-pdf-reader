@@ -1,11 +1,12 @@
 #include <stdexcept>
 
 #include "pdf/pdf_renderer.h"
+#include "utils/settings.h"
 
 namespace pdf {
 
 PDFRenderer::PDFRenderer(PDFDocument &document)
-    : document_(document), page_cache_(document.getCache()) {}
+    : document_(document), page_display_list_cache_(settings::cache_size_) {}
 
 fz_display_list *PDFRenderer::getOrLoadDisplayList(std::size_t page_idx) {
   auto *ctx = document_.getCtx();
@@ -14,13 +15,13 @@ fz_display_list *PDFRenderer::getOrLoadDisplayList(std::size_t page_idx) {
   if (page_idx >= document_.size())
     throw std::out_of_range("Page index out of range");
 
-  if (!page_cache_.contains(page_idx)) {
+  if (!page_display_list_cache_.contains(page_idx)) {
     fz_display_list *list = getPageDisplayList(ctx, doc, page_idx);
-    page_cache_.put(page_idx, pdf::PDFPage(ctx, list));
+    page_display_list_cache_.put(page_idx, pdf::PDFPageDisplayList(ctx, list));
     return list;
   }
 
-  return page_cache_.get(page_idx)->displayList();
+  return page_display_list_cache_.get(page_idx)->displayList();
 }
 
 const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rot) {
@@ -34,12 +35,16 @@ const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rot
   return texture_;
 }
 
-sf::Vector2u PDFRenderer::pageSize(std::size_t page_idx, float zoom, int rot) {
+sf::Vector2u PDFRenderer::getPageSize(std::size_t page_idx, float zoom, int rot) {
   auto *ctx = document_.getCtx();
   fz_display_list *list = getOrLoadDisplayList(page_idx);
 
   fz_irect bbox = getTargetBBox(ctx, list, zoom, rot);
   return {static_cast<unsigned int>(bbox.x1 - bbox.x0), static_cast<unsigned int>(bbox.y1 - bbox.y0)};
+}
+
+void PDFRenderer::clearCache() {
+  page_display_list_cache_.clear();
 }
 
 fz_display_list *

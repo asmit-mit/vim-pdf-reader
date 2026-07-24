@@ -1,19 +1,19 @@
-#include "pdf/pdf_page.h"
+#include "pdf/pdf_page_display_list.h"
 
 namespace pdf {
 
-PDFPage::PDFPage(fz_context *ctx, fz_display_list *display_list)
+PDFPageDisplayList::PDFPageDisplayList(fz_context *ctx, fz_display_list *display_list)
     : ctx_(ctx), display_list_(display_list) {}
 
-PDFPage::~PDFPage() {
+PDFPageDisplayList::~PDFPageDisplayList() {
   reset();
 }
 
-PDFPage::PDFPage(PDFPage &&other) noexcept {
+PDFPageDisplayList::PDFPageDisplayList(PDFPageDisplayList &&other) noexcept {
   *this = std::move(other);
 }
 
-PDFPage &PDFPage::operator=(PDFPage &&other) noexcept {
+PDFPageDisplayList &PDFPageDisplayList::operator=(PDFPageDisplayList &&other) noexcept {
   if (this != &other) {
     reset();
 
@@ -27,11 +27,11 @@ PDFPage &PDFPage::operator=(PDFPage &&other) noexcept {
   return *this;
 }
 
-fz_display_list *PDFPage::displayList() const {
+fz_display_list *PDFPageDisplayList::displayList() const {
   return display_list_;
 }
 
-void PDFPage::reset() {
+void PDFPageDisplayList::reset() {
   if (display_list_) {
     fz_drop_display_list(ctx_, display_list_);
     display_list_ = nullptr;
