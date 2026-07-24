@@ -25,6 +25,7 @@ private:
   void setZoom(float zoom);
   void setRotate(int rotate);
   void getPage(std::size_t page_num, float zoom, int rotate);
+  void syncScaleRotation();
   void centerPage();
   void resetView();
   void setPageLoc(float x, float y);
@@ -55,6 +56,12 @@ private:
   float visual_zoom_;
   int render_rotate_;
   int visual_rotate_;
+
+  bool cached_target_size_valid_;
+  std::size_t cached_size_page_;
+  float cached_size_zoom_;
+  int cached_size_rotate_;
+  sf::Vector2u cached_target_size_;
 
   static constexpr float scrollwheel_width_ = 8.f;
   static constexpr float zoom_dobounce_ms_ = 500.f;

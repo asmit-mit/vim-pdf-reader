@@ -11,9 +11,12 @@ public:
   explicit PDFRenderer(PDFDocument &document);
 
   const sf::Texture &render(std::size_t page_idx, float zoom = 1.f, int rotate = 0);
+  sf::Vector2u pageSize(std::size_t page_idx, float zoom = 1.f, int rotate = 0);
 
 private:
   fz_display_list *getPageDisplayList(fz_context *ctx, fz_document *doc, std::size_t page_idx);
+  fz_display_list *getOrLoadDisplayList(std::size_t page_idx);
+  fz_irect getTargetBBox(fz_context *ctx, fz_display_list *list, float zoom, int rot);
   fz_pixmap *getPixmapFromDisplayList(fz_context *ctx, fz_display_list *list, float zoom, int rot);
   void rastarizeToBitmap(fz_context *ctx, fz_pixmap *pix);
 

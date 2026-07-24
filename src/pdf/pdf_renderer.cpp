@@ -7,24 +7,39 @@ namespace pdf {
 PDFRenderer::PDFRenderer(PDFDocument &document)
     : document_(document), page_cache_(document.getCache()) {}
 
-const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rot) {
+fz_display_list *PDFRenderer::getOrLoadDisplayList(std::size_t page_idx) {
   auto *ctx = document_.getCtx();
   auto *doc = document_.getDoc();
 
   if (page_idx >= document_.size())
     throw std::out_of_range("Page index out of range");
 
-  fz_display_list *list = nullptr;
   if (!page_cache_.contains(page_idx)) {
-    list = getPageDisplayList(ctx, doc, page_idx);
+    fz_display_list *list = getPageDisplayList(ctx, doc, page_idx);
     page_cache_.put(page_idx, pdf::PDFPage(ctx, list));
-  } else
-    list = page_cache_.get(page_idx)->displayList();
+    return list;
+  }
+
+  return page_cache_.get(page_idx)->displayList();
+}
+
+const sf::Texture &PDFRenderer::render(std::size_t page_idx, float zoom, int rot) {
+  auto *ctx = document_.getCtx();
+
+  fz_display_list *list = getOrLoadDisplayList(page_idx);
 
   fz_pixmap *pix = getPixmapFromDisplayList(ctx, list, zoom, rot);
   rastarizeToBitmap(ctx, pix);
 
   return texture_;
+}
+
+sf::Vector2u PDFRenderer::pageSize(std::size_t page_idx, float zoom, int rot) {
+  auto *ctx = document_.getCtx();
+  fz_display_list *list = getOrLoadDisplayList(page_idx);
+
+  fz_irect bbox = getTargetBBox(ctx, list, zoom, rot);
+  return {static_cast<unsigned int>(bbox.x1 - bbox.x0), static_cast<unsigned int>(bbox.y1 - bbox.y0)};
 }
 
 fz_display_list *
@@ -52,17 +67,26 @@ PDFRenderer::getPageDisplayList(fz_context *ctx, fz_document *doc, std::size_t p
   return list;
 }
 
-fz_pixmap *
-PDFRenderer::getPixmapFromDisplayList(fz_context *ctx, fz_display_list *list, float zoom, int rot) {
+fz_irect PDFRenderer::getTargetBBox(fz_context *ctx, fz_display_list *list, float zoom, int rot) {
   fz_matrix ctm = fz_scale(zoom, zoom);
   ctm = fz_pre_rotate(ctm, rot * 90.f);
 
   fz_rect bounds = fz_bound_display_list(ctx, list);
   fz_rect transformed = fz_transform_rect(bounds, ctm);
-  fz_irect bbox = fz_round_rect(transformed);
+  return fz_round_rect(transformed);
+}
+
+fz_pixmap *
+PDFRenderer::getPixmapFromDisplayList(fz_context *ctx, fz_display_list *list, float zoom, int rot) {
+  fz_matrix ctm = fz_scale(zoom, zoom);
+  ctm = fz_pre_rotate(ctm, rot * 90.f);
 
   fz_pixmap *pix = nullptr;
   fz_device *dev = nullptr;
+
+  fz_rect bounds = fz_bound_display_list(ctx, list);
+  fz_rect transformed = fz_transform_rect(bounds, ctm);
+  fz_irect bbox = fz_round_rect(transformed);
 
   fz_try(ctx) {
     pix = fz_new_pixmap_with_bbox(ctx, fz_device_rgb(ctx), bbox, nullptr, 0);
