@@ -8,8 +8,10 @@
 
 namespace ui {
 
-PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::EventBus &event_bus)
-    : event_bus_(event_bus), document_(document), renderer_(renderer),
+PDFView::PDFView(
+    pdf::PDFDocument &document, core::RenderScheduler &scheduler, core::EventBus &event_bus
+)
+    : event_bus_(event_bus), document_(document), scheduler_(scheduler),
       sprite_(sf::Sprite(texture_)) {
   curr_x_ = 0.f;
   curr_y_ = 0.f;
@@ -32,19 +34,25 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   cached_size_zoom_ = 0.f;
   cached_size_rotate_ = 0;
 
+  has_pending_ = false;
+  needs_initial_center_ = false;
+
   horizontal_wheel_.setFillColor(utils::hexToRGB(settings::scrollwheel_color_));
   vertical_wheel_.setFillColor(utils::hexToRGB(settings::scrollwheel_color_));
 
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
         try {
+          scheduler_.quiesce();
           document_.openDocument(utils::resolvePath(filepath));
+          scheduler_.clearCache();
+          scheduler_.resume();
+
           resetView();
           has_document_ = true;
+          needs_initial_center_ = true;
 
           getPage(current_page_, render_zoom_, render_rotate_);
-          centerPage();
-          setPageLoc(window_size_.x / 2.f, window_size_.y / 2.f);
 
           event_bus_.emit("statusbar.pdf_path", utils::resolvePath(filepath));
           event_bus_.emit("statusbar.page_number", current_page_ + 1);
@@ -59,7 +67,7 @@ PDFView::PDFView(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::E
   event_bus_.subscribe<bool>("cmd_processor.close_document", [this](bool close_document) {
     if (!has_document_)
       return;
-    renderer_.clearCache();
+    scheduler_.clearCache();
     document_.closeDocument();
     resetView();
     event_bus_.emit("statusbar.pdf_path", std::string("[Nothing Open Yet]"));
@@ -110,6 +118,27 @@ void PDFView::update() {
     render_zoom_ = visual_zoom_;
     render_rotate_ = visual_rotate_;
     event_bus_.emit("statusbar.page_number", current_page_ + 1);
+  }
+
+  // Pull in the newest requested render if it's ready. Until then we
+  // keep showing whatever texture_ currently holds (the previous
+  // page/zoom/rotate), rather than blocking or blanking the view.
+  if (has_pending_ && scheduler_.isReady(pending_key_)) {
+    if (sf::Texture *tex = scheduler_.getTexture(pending_key_)) {
+      // Copy into our own member rather than holding the cache's
+      // pointer, since the LRU cache can evict it out from under us.
+      texture_ = *tex;
+      texture_.setSmooth(false);
+      sprite_.setTexture(texture_, true);
+      sprite_.setScale({1.f, 1.f});
+      has_pending_ = false;
+
+      if (needs_initial_center_) {
+        centerPage();
+        setPageLoc(window_size_.x / 2.f, window_size_.y / 2.f);
+        needs_initial_center_ = false;
+      }
+    }
   }
 
   syncScaleRotation();
@@ -255,10 +284,10 @@ float PDFView::map(float value, float src_min, float src_max, float dst_min, flo
 }
 
 void PDFView::getPage(std::size_t page_num, float zoom, int rotate) {
-  texture_ = renderer_.render(page_num, zoom, rotate);
-  texture_.setSmooth(false);
-  sprite_.setTexture(texture_, true);
-  sprite_.setScale({1.f, 1.f});
+  const pdf::PDFRenderKey key{page_num, zoom, rotate};
+  scheduler_.request(key);
+  pending_key_ = key;
+  has_pending_ = true;
 }
 
 void PDFView::syncScaleRotation() {
@@ -266,7 +295,8 @@ void PDFView::syncScaleRotation() {
 
   if (!cached_target_size_valid_ || cached_size_page_ != current_page_ ||
       cached_size_zoom_ != visual_zoom_ || cached_size_rotate_ != visual_rotate_) {
-    cached_target_size_ = renderer_.getPageSize(current_page_, visual_zoom_, visual_rotate_);
+    const pdf::PDFRenderKey size_key{current_page_, visual_zoom_, visual_rotate_};
+    cached_target_size_ = scheduler_.getPageSize(size_key);
     cached_size_page_ = current_page_;
     cached_size_zoom_ = visual_zoom_;
     cached_size_rotate_ = visual_rotate_;
@@ -337,6 +367,8 @@ void PDFView::resetView() {
   visual_rotate_ = 0;
 
   cached_target_size_valid_ = false;
+  has_pending_ = false;
+  needs_initial_center_ = false;
 
   setPageLoc(0.f, 0.f);
   texture_ = sf::Texture{};

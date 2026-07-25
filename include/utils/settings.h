@@ -14,6 +14,7 @@ constexpr uint32_t scrollwheel_color_ = 0x458588;
 
 constexpr float delta_zoom_ = 0.1f;
 constexpr std::size_t cache_size_ = 15;
+constexpr std::size_t thread_count_ = 4;
 
 constexpr char font_normal_[] =
     "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Light.ttf";

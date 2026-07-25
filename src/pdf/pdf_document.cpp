@@ -5,12 +5,18 @@
 namespace pdf {
 
 PDFDocument::PDFDocument() {
-  ctx_ = fz_new_context(nullptr, nullptr, FZ_STORE_DEFAULT);
+  locks_.user = this;
+  locks_.lock = &PDFDocument::lockMutex;
+  locks_.unlock = &PDFDocument::unlockMutex;
+
+  ctx_ = fz_new_context(nullptr, &locks_, FZ_STORE_DEFAULT);
   if (!ctx_)
     throw std::runtime_error("Failed to create MuPDF context");
 
   fz_try(ctx_) fz_register_document_handlers(ctx_);
   fz_catch(ctx_) {
+    fz_drop_context(ctx_);
+    ctx_ = nullptr;
     throw std::runtime_error("Failed to register document handlers");
   }
 
@@ -45,8 +51,8 @@ std::size_t PDFDocument::size() const {
   return page_count_;
 }
 
-fz_context *PDFDocument::getCtx() const {
-  return ctx_;
+FzContextPtr PDFDocument::cloneContext() const {
+  return FzContextPtr(fz_clone_context(ctx_), &fz_drop_context);
 }
 
 fz_document *PDFDocument::getDoc() const {
@@ -60,6 +66,14 @@ PDFDocument::~PDFDocument() {
     fz_drop_context(ctx_);
     ctx_ = nullptr;
   }
+}
+
+void PDFDocument::lockMutex(void *user, int lock) {
+  static_cast<PDFDocument *>(user)->mutexes_[lock].lock();
+}
+
+void PDFDocument::unlockMutex(void *user, int lock) {
+  static_cast<PDFDocument *>(user)->mutexes_[lock].unlock();
 }
 
 } // namespace pdf

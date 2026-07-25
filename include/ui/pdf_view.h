@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "core/event_bus.h"
+#include "core/render_scheduler.h"
 #include "pdf/pdf_document.h"
 #include "pdf/pdf_renderer.h"
 #include "ui/scrollwheel.h"
@@ -12,7 +13,7 @@ namespace ui {
 class PDFView {
 public:
   explicit PDFView(
-      pdf::PDFDocument &document, pdf::PDFRenderer &renderer, core::EventBus &event_bus
+      pdf::PDFDocument &document, core::RenderScheduler &scheduler, core::EventBus &event_bus
   );
 
   void draw(sf::RenderTarget &window) const;
@@ -34,7 +35,7 @@ private:
 private:
   core::EventBus &event_bus_;
   pdf::PDFDocument &document_;
-  pdf::PDFRenderer &renderer_;
+  core::RenderScheduler &scheduler_;
   ui::ScrollWheel horizontal_wheel_;
   ui::ScrollWheel vertical_wheel_;
 
@@ -62,6 +63,10 @@ private:
   float cached_size_zoom_;
   int cached_size_rotate_;
   sf::Vector2u cached_target_size_;
+
+  pdf::PDFRenderKey pending_key_;
+  bool has_pending_;
+  bool needs_initial_center_;
 
   static constexpr float scrollwheel_width_ = 8.f;
   static constexpr float zoom_dobounce_ms_ = 500.f;
