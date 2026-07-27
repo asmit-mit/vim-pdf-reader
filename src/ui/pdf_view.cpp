@@ -1,4 +1,3 @@
-#include <print>
 #include <stdexcept>
 
 #include "ui/pdf_view.h"
@@ -108,34 +107,28 @@ void PDFView::update() {
   if ((render_zoom_ != visual_zoom_ || render_rotate_ != visual_rotate_) &&
       page_update_timer_.getElapsedTime().asMilliseconds() > zoom_dobounce_ms_) {
     getPage(current_page_, visual_zoom_, visual_rotate_);
-    render_zoom_ = visual_zoom_;
-    render_rotate_ = visual_rotate_;
   }
 
   if (render_page_ != current_page_) {
     getPage(current_page_, visual_zoom_, visual_rotate_);
-    render_page_ = current_page_;
-    render_zoom_ = visual_zoom_;
-    render_rotate_ = visual_rotate_;
     event_bus_.emit("statusbar.page_number", current_page_ + 1);
   }
 
-  // Pull in the newest requested render if it's ready. Until then we
-  // keep showing whatever texture_ currently holds (the previous
-  // page/zoom/rotate), rather than blocking or blanking the view.
   if (has_pending_ && scheduler_.isReady(pending_key_)) {
     if (sf::Texture *tex = scheduler_.getTexture(pending_key_)) {
-      // Copy into our own member rather than holding the cache's
-      // pointer, since the LRU cache can evict it out from under us.
       texture_ = *tex;
       texture_.setSmooth(false);
       sprite_.setTexture(texture_, true);
       sprite_.setScale({1.f, 1.f});
       has_pending_ = false;
 
+      render_page_ = current_page_;
+      render_zoom_ = visual_zoom_;
+      render_rotate_ = visual_rotate_;
+
       if (needs_initial_center_) {
         centerPage();
-        setPageLoc(window_size_.x / 2.f, window_size_.y / 2.f);
+        setPageLoc(window_size_.x * 0.5f, window_size_.y * 0.5f);
         needs_initial_center_ = false;
       }
     }
@@ -284,8 +277,15 @@ float PDFView::map(float value, float src_min, float src_max, float dst_min, flo
 }
 
 void PDFView::getPage(std::size_t page_num, float zoom, int rotate) {
-  const pdf::PDFRenderKey key{page_num, zoom, rotate};
-  scheduler_.request(key);
+  pdf::PDFRenderKey key{page_num, zoom, rotate};
+
+  const std::size_t total_pages = document_.size();
+  const std::size_t start = (page_num >= 2) ? page_num - 2 : 0;
+  const std::size_t end = std::min(page_num + 2, total_pages - 1);
+
+  for (std::size_t i = start; i <= end; ++i)
+    scheduler_.request({i, zoom, rotate});
+
   pending_key_ = key;
   has_pending_ = true;
 }

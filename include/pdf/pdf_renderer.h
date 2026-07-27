@@ -1,14 +1,13 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <mupdf/fitz.h>
+
 #include <mutex>
 
-#include "pdf/pdf_page_display_list.h"
 #include "utils/lru_cache.h"
 
 namespace pdf {
-
-using PDFPageDisplayListCache = utils::LRUCache<std::size_t, pdf::PDFPageDisplayList>;
 
 struct PDFRenderKey {
   std::size_t page_idx;
@@ -36,22 +35,43 @@ struct PDFRenderKeyHash {
   }
 };
 
+class PDFPageDisplayList {
+public:
+  PDFPageDisplayList() = default;
+  PDFPageDisplayList(fz_context *ctx, fz_display_list *display_list);
+  ~PDFPageDisplayList();
+  PDFPageDisplayList(const PDFPageDisplayList &) = delete;
+  PDFPageDisplayList &operator=(const PDFPageDisplayList &) = delete;
+  PDFPageDisplayList(PDFPageDisplayList &&other) noexcept;
+  PDFPageDisplayList &operator=(PDFPageDisplayList &&other) noexcept;
+
+  fz_display_list *displayList() const;
+
+private:
+  void reset();
+
+private:
+  fz_context *ctx_ = nullptr;
+  fz_display_list *display_list_ = nullptr;
+};
+
 class PDFRenderer {
 public:
   explicit PDFRenderer();
 
   const sf::Image render(fz_context *ctx, fz_document *doc, const PDFRenderKey &key);
-  sf::Vector2u getPageSize(fz_context *ctx, fz_document *doc, const PDFRenderKey &key);
+  sf::Vector2u getPageSize(fz_rect bounds, const PDFRenderKey &key);
   void clearCache();
 
 private:
   fz_display_list *getPageDisplayList(std::size_t page_idx, fz_context *ctx, fz_document *doc);
   fz_display_list *getOrLoadDisplayList(std::size_t page_idx, fz_context *ctx, fz_document *doc);
-  fz_irect getTargetBBox(fz_context *ctx, fz_display_list *list, float zoom, int rot);
   fz_pixmap *getPixmapFromDisplayList(fz_context *ctx, fz_display_list *list, float zoom, int rot);
   sf::Image rastarizeToBitmap(fz_context *ctx, fz_pixmap *pix);
 
 private:
+  using PDFPageDisplayListCache = utils::LRUCache<std::size_t, pdf::PDFPageDisplayList>;
+
   PDFPageDisplayListCache cache_;
   std::mutex display_mutex_;
 };

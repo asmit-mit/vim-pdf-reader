@@ -21,7 +21,6 @@ PDFDocument::PDFDocument() {
   }
 
   doc_ = nullptr;
-  page_count_ = 0;
 }
 
 void PDFDocument::openDocument(const std::string &filepath) {
@@ -32,9 +31,17 @@ void PDFDocument::openDocument(const std::string &filepath) {
     throw std::runtime_error("Failed to open document");
   }
 
-  fz_try(ctx_) page_count_ = fz_count_pages(ctx_, doc_);
+  int page_count;
+  fz_try(ctx_) page_count = fz_count_pages(ctx_, doc_);
   fz_catch(ctx_) {
     throw std::runtime_error("Failed to count number of pages");
+  }
+
+  pages_.reserve(page_count);
+  for (int i = 0; i < page_count; i++) {
+    fz_page *page = fz_load_page(ctx_, doc_, i);
+    fz_rect bounds = fz_bound_page(ctx_, page);
+    pages_.emplace_back(i, bounds);
   }
 }
 
@@ -44,11 +51,15 @@ void PDFDocument::closeDocument() {
     doc_ = nullptr;
   }
 
-  page_count_ = 0;
+  pages_.clear();
+}
+
+PDFPage &PDFDocument::getPage(std::size_t page_idx) {
+  return pages_[page_idx];
 }
 
 std::size_t PDFDocument::size() const {
-  return page_count_;
+  return pages_.size();
 }
 
 FzContextPtr PDFDocument::cloneContext() const {

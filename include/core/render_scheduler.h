@@ -5,8 +5,8 @@
 #include "utils/lru_cache.h"
 
 #include <condition_variable>
+#include <deque>
 #include <mutex>
-#include <queue>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -31,17 +31,23 @@ public:
   void resume();
 
 private:
+  struct WorkerSlot {
+    std::size_t index;
+    pdf::FzContextPtr ctx;
+  };
+
   void workerLoop(std::size_t idx);
   void clearCacheLocked();
 
 private:
   pdf::PDFDocument &document_;
   pdf::PDFRenderer &renderer_;
-  std::vector<std::thread> workers_;
-  std::vector<pdf::FzContextPtr> worker_context_;
 
-  TextureCache texture_cache_;
+  std::vector<std::thread> workers_;
+  std::vector<WorkerSlot> slots_;
+
   ImageCache image_cache_;
+  TextureCache texture_cache_;
   std::unordered_set<pdf::PDFRenderKey, pdf::PDFRenderKeyHash> pending_;
 
   std::deque<pdf::PDFRenderKey> job_queue_;
@@ -50,13 +56,9 @@ private:
   std::condition_variable cv_work_;
   std::condition_variable cv_idle_;
 
-  pdf::FzContextPtr main_ctx_;
-
   std::size_t active_jobs_;
   bool quiescing_;
   bool stop_;
-
-  static constexpr std::size_t max_queue_size_ = 8;
 };
 
 } // namespace core

@@ -13,7 +13,6 @@ sources = files(
   'src/core/render_scheduler.cpp',
   'src/main.cpp',
   'src/pdf/pdf_document.cpp',
-  'src/pdf/pdf_page_display_list.cpp',
   'src/pdf/pdf_renderer.cpp',
   'src/ui/cmdline.cpp',
   'src/ui/cursor.cpp',

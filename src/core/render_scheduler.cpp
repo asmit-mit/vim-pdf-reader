@@ -8,12 +8,11 @@ namespace core {
 RenderScheduler::RenderScheduler(
     pdf::PDFDocument &document, pdf::PDFRenderer &renderer, std::size_t worker_count
 )
-    : document_(document), renderer_(renderer), texture_cache_(settings::cache_size_),
-      image_cache_(settings::cache_size_), main_ctx_(document_.cloneContext()), active_jobs_(0),
-      quiescing_(false), stop_(false) {
-  worker_context_.reserve(worker_count);
+    : document_(document), renderer_(renderer), image_cache_(settings::page_cache_size_),
+      texture_cache_(settings::page_cache_size_), active_jobs_(0), quiescing_(false), stop_(false) {
+  slots_.reserve(worker_count);
   for (std::size_t i = 0; i < worker_count; i++)
-    worker_context_.push_back(document_.cloneContext());
+    slots_.push_back(WorkerSlot{i, document_.cloneContext()});
 
   workers_.reserve(worker_count);
   for (std::size_t i = 0; i < worker_count; i++)
@@ -51,7 +50,7 @@ void RenderScheduler::request(const pdf::PDFRenderKey &key) {
     if (!pending_.insert(key).second)
       return;
 
-    if (job_queue_.size() >= max_queue_size_) {
+    if (job_queue_.size() >= workers_.size()) {
       pending_.erase(job_queue_.front());
       job_queue_.pop_front();
     }
@@ -71,7 +70,7 @@ const sf::Vector2u RenderScheduler::getPageSize(const pdf::PDFRenderKey &key) {
   if (key.page_idx >= document_.size())
     throw std::out_of_range("Page index out of range");
 
-  return renderer_.getPageSize(main_ctx_.get(), document_.getDoc(), key);
+  return renderer_.getPageSize(document_.getPage(key.page_idx).page_bounds, key);
 }
 
 bool RenderScheduler::isReady(const pdf::PDFRenderKey &key) {
@@ -94,6 +93,8 @@ sf::Texture *RenderScheduler::getTexture(const pdf::PDFRenderKey &key) {
     throw std::runtime_error("Failed to load image into texture");
 
   texture_cache_.put(key, std::move(texture));
+  image_cache_.erase(key);
+
   return texture_cache_.get(key);
 }
 
@@ -130,13 +131,16 @@ void RenderScheduler::workerLoop(std::size_t idx) {
     key = job_queue_.back();
     job_queue_.pop_back();
     active_jobs_++;
+
+    fz_context *ctx = slots_[idx].ctx.get();
     lock.unlock();
 
-    sf::Image image = renderer_.render(worker_context_[idx].get(), document_.getDoc(), key);
+    sf::Image image = renderer_.render(ctx, document_.getDoc(), key);
 
     lock.lock();
     image_cache_.put(key, std::move(image));
     pending_.erase(key);
+
     active_jobs_--;
     if (active_jobs_ == 0)
       cv_idle_.notify_all();
@@ -144,8 +148,8 @@ void RenderScheduler::workerLoop(std::size_t idx) {
 }
 
 void RenderScheduler::clearCacheLocked() {
-  texture_cache_.clear();
   image_cache_.clear();
+  texture_cache_.clear();
   pending_.clear();
   job_queue_.clear();
 

@@ -1,10 +1,14 @@
 #pragma once
 
+#include <mupdf/fitz.h>
+
 #include <array>
 #include <memory>
-#include <mupdf/fitz.h>
 #include <mutex>
 #include <string>
+#include <vector>
+
+#include "pdf/pdf_page.h"
 
 namespace pdf {
 
@@ -20,6 +24,7 @@ public:
 
   void openDocument(const std::string &filepath);
   void closeDocument();
+  PDFPage &getPage(std::size_t page_idx);
 
   std::size_t size() const;
 
@@ -34,7 +39,8 @@ private:
   std::array<std::mutex, FZ_LOCK_MAX> mutexes_;
   fz_locks_context locks_;
 
-  std::size_t page_count_;
+  std::vector<pdf::PDFPage> pages_;
+
   fz_context *ctx_;
   fz_document *doc_;
 };
