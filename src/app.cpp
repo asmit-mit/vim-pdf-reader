@@ -1,12 +1,14 @@
 #include "app.h"
+#include "core/render_scheduler.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
 
 App::App()
     : font_normal_(settings::font_normal_), font_bold_(settings::font_bold_),
-      font_italic_(settings::font_italic_), cmd_processor_(event_bus_), renderer_(document_),
+      font_italic_(settings::font_italic_), document_(), renderer_(), cmd_processor_(event_bus_),
+      render_scheduler_(document_, renderer_, settings::thread_count_),
       cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_),
-      statusbar_(font_normal_, event_bus_), pdf_view_(document_, renderer_, event_bus_) {
+      statusbar_(font_normal_, event_bus_), pdf_view_(document_, render_scheduler_, event_bus_) {
   sf::ContextSettings settings;
   settings.antiAliasingLevel = 8;
 
@@ -23,7 +25,11 @@ App::App()
   statusbar_.onResize(view_.getSize());
   pdf_view_.onResize(view_.getSize());
 
-  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) { window_.close(); });
+  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) {
+    renderer_.clearCache();
+    document_.closeDocument();
+    window_.close();
+  });
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     focus_ = focus;

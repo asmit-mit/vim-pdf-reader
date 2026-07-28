@@ -13,6 +13,9 @@ constexpr uint32_t completion_highlight_bg_ = 0x458588;
 constexpr uint32_t scrollwheel_color_ = 0x458588;
 
 constexpr float delta_zoom_ = 0.1f;
+constexpr std::size_t display_list_cache_size_ = 200;
+constexpr std::size_t page_cache_size_ = 5;
+constexpr std::size_t thread_count_ = 5;
 
 constexpr char font_normal_[] =
     "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Light.ttf";

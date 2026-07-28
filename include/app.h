@@ -1,10 +1,11 @@
 #pragma once
 
-#include "SFML/Graphics.hpp"
+#include <SFML/Graphics.hpp>
 
 #include "core/cmd_history.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
+#include "core/render_scheduler.h"
 #include "ui/cmdline.h"
 #include "ui/pdf_view.h"
 #include "ui/statusbar.h"
@@ -26,12 +27,13 @@ private:
   sf::Font font_bold_;
   sf::Font font_italic_;
 
+  pdf::PDFDocument document_;
+  pdf::PDFRenderer renderer_;
+
   core::EventBus event_bus_;
   core::CmdProcessor cmd_processor_;
   core::CmdHistory cmd_history_;
-
-  pdf::PDFDocument document_;
-  pdf::PDFRenderer renderer_;
+  core::RenderScheduler render_scheduler_;
 
   ui::Cmdline cmdline_;
   ui::Statusbar statusbar_;
