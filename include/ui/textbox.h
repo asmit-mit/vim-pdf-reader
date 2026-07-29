@@ -32,27 +32,66 @@ public:
   std::size_t getCursorPosition() const;
 
 private:
+  std::size_t findWordStart(std::size_t) const;
+  std::size_t findWordEnd(std::size_t) const;
+
   void backspace();
-  void ctrlBackspace();
   void del();
+  void ctrlBackspace();
   void ctrlDel();
-  void ctrlArrow(bool direction);
+  void ctrlArrowRight();
+  void ctrlArrowLeft();
+  void selectAll();
+
+  std::size_t getCharacterIndex(const sf::Vector2i &pos);
+  float getCursorX(std::size_t idx);
+  void createSelectionBox();
+  void rebuildDisplayTexts();
+
+  void deleteSelection();
+  void clearSelection();
+  std::string getSelectedText() const;
+
+private:
+  struct Selection {
+    std::size_t anchor = 0;
+    std::size_t caret = 0;
+
+    bool active() const {
+      return anchor != caret;
+    }
+
+    std::size_t begin() const {
+      return std::min(anchor, caret);
+    }
+
+    std::size_t end() const {
+      return std::max(anchor, caret);
+    }
+  };
 
 private:
   const sf::Font &font_;
-  sf::Vector2f cursor_size_;
+  sf::RectangleShape selection_box_;
+
   sf::Vector2f pos_;
-  std::size_t cursor_pos_;
+
+  ui::Cursor cursor_;
+  sf::Vector2f cursor_size_;
+  bool cursor_dirty_;
 
   sf::Text display_text_;
-  ui::Cursor cursor_;
+  sf::Text display_text_selected_;
 
   std::string text_;
+  bool text_dirty_;
+
+  Selection selection_;
+  bool selection_dirty_;
+  bool selecting_;
 
   bool visible_;
   bool editing_;
-  bool text_dirty_;
-  bool cursor_dirty_;
 };
 
 } // namespace ui

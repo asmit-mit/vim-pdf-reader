@@ -35,6 +35,10 @@ void Cursor::setPosition(const sf::Vector2f &position) {
   cursor_.setPosition(position);
 }
 
+sf::Vector2f Cursor::getPosition() const {
+  return cursor_.getPosition();
+}
+
 void Cursor::start() {
   blinking_ = true;
   visible_ = true;

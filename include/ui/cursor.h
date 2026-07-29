@@ -13,6 +13,7 @@ public:
   void handleEvent(const sf::Event &) override {}
 
   void setPosition(const sf::Vector2f &position);
+  sf::Vector2f getPosition() const;
   void setSize(const sf::Vector2f &position);
 
   void start();
