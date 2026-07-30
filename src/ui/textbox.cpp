@@ -1,6 +1,7 @@
 #include "ui/textbox.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
+#include <iostream>
 
 namespace ui {
 
@@ -347,10 +348,12 @@ void Textbox::ctrlDel() {
 
 void Textbox::ctrlArrowLeft() {
   setCursorPosition(findWordStart(selection_.caret));
+  clearSelection();
 }
 
 void Textbox::ctrlArrowRight() {
   setCursorPosition(findWordEnd(selection_.caret));
+  clearSelection();
 }
 
 void Textbox::selectAll() {
