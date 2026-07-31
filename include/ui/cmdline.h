@@ -9,12 +9,6 @@
 
 namespace ui {
 
-enum class CmdlineState {
-  Status,
-  Edit,
-  Hidden,
-};
-
 class Cmdline : public Widget {
 public:
   explicit Cmdline(
@@ -34,6 +28,13 @@ public:
 
 private:
   void refreshCompletions();
+
+private:
+  enum class CmdlineState {
+    Status,
+    Edit,
+    Hidden,
+  };
 
 private:
   core::EventBus &event_bus_;

@@ -28,7 +28,7 @@ void PDFDocument::openDocument(const std::string &filepath) {
 
   fz_try(ctx_) doc_ = fz_open_document(ctx_, filepath.c_str());
   fz_catch(ctx_) {
-    throw std::runtime_error("Failed to open document");
+    throw std::runtime_error("Failed to open document: " + filepath);
   }
 
   int page_count;

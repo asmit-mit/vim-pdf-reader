@@ -15,7 +15,7 @@ constexpr uint32_t textbox_highlight_fg_ = 0x7daea3;
 
 constexpr float delta_zoom_ = 0.1f;
 constexpr std::size_t display_list_cache_size_ = 200;
-constexpr std::size_t page_cache_size_ = 5;
+constexpr std::size_t page_cache_size_ = 15;
 constexpr std::size_t thread_count_ = 5;
 
 constexpr char font_normal_[] =

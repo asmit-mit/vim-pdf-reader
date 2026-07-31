@@ -84,8 +84,6 @@ void Statusbar::update() {
   display_zoom_.setPosition({zoom_x, round_y});
 }
 
-void Statusbar::handleEvent(const sf::Event &event) {}
-
 void Statusbar::onResize(const sf::Vector2f &size) {
   curr_x_ = 0;
   curr_y_ = size.y - height_;

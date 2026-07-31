@@ -17,6 +17,7 @@ sources = files(
   'src/ui/cmdline.cpp',
   'src/ui/cursor.cpp',
   'src/ui/statusbar.cpp',
+  'src/ui/page_view.cpp',
   'src/ui/pdf_view.cpp',
   'src/ui/textbox.cpp',
   'src/ui/completions.cpp',

@@ -134,7 +134,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
             ignore_next_text_entered_ = true;
           } catch (const std::runtime_error &e) {
             state_ = CmdlineState::Status;
-            textbox_.setText(std::string(e.what()) + " (press \":\" to continue...)");
+            textbox_.setText(std::string(e.what()));
             textbox_.stopEditing();
           }
         }

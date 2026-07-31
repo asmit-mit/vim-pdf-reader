@@ -11,7 +11,6 @@ public:
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
-  void handleEvent(const sf::Event &event) override;
 
   void onResize(const sf::Vector2f &size);
 
