@@ -22,7 +22,7 @@ public:
 
   void setRotation(int rot);
   void setScale(const sf::Vector2f &size);
-  sf::Vector2u getSize() const;
+  sf::Vector2u getTextureSize() const;
 
   void setKey(const pdf::PDFRenderKey &key);
   pdf::PDFRenderKey getKey() const;

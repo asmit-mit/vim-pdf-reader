@@ -39,6 +39,7 @@ private:
   void panCurrentPage(sf::Vector2f delta);
 
   float map(float value, float src_min, float src_max, float dst_min, float dst_max);
+  void putPageInNonFracPos(PageView &page);
 
 private:
   struct ScrollWheelDirty {
@@ -77,6 +78,7 @@ private:
   bool pending_page_update_;
 
   sf::Vector2f window_size_;
+  sf::Vector2f old_window_size_;
   sf::Keyboard::Key prev_key_ = sf::Keyboard::Key::Unknown;
 
   static constexpr float gap_ = 1.f;

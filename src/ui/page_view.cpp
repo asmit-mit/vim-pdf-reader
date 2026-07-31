@@ -32,7 +32,7 @@ void PageView::setScale(const sf::Vector2f &scale) {
   sprite_.setScale(scale);
 }
 
-sf::Vector2u PageView::getSize() const {
+sf::Vector2u PageView::getTextureSize() const {
   return sprite_.getTexture().getSize();
 }
 
@@ -46,6 +46,8 @@ pdf::PDFRenderKey PageView::getKey() const {
 
 void PageView::setTexture(const sf::Texture &texture) {
   sprite_.setTexture(texture, true);
+  const auto bounds = sprite_.getLocalBounds();
+  sprite_.setOrigin({bounds.size.x * 0.5f, bounds.size.y * 0.5f});
   active_ = true;
 }
 
