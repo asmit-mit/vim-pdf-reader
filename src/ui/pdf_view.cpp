@@ -1,4 +1,3 @@
-#include <print>
 #include <stdexcept>
 
 #include "pdf/pdf_renderer.h"
@@ -60,7 +59,6 @@ void PDFView::update() {
   if (pending_page_update_ &&
       scale_rot_update_timer_.getElapsedTime().asMilliseconds() > scale_rot_debounce_ms_) {
     requestPage(curr_page_, target_state_.zoom, target_state_.rotate);
-    std::println("requested new pages for pending updates");
     pending_page_update_ = false;
   }
 
@@ -166,10 +164,8 @@ void PDFView::setInitialPagePos() {
   if (!need_initial_pos_)
     return;
 
-  if (!pages_[curr_page_].hasTexture()) {
-    std::println("setInitialPagePos: waiting for texture on page {}", curr_page_);
+  if (!pages_[curr_page_].hasTexture())
     return;
-  }
 
   const auto size = pages_[curr_page_].getGlobalBounds().size;
 
@@ -245,9 +241,9 @@ void PDFView::updatePagePositions() {
   if (!pages_[curr_page_].hasTexture())
     return;
 
-  if (window_size_changed_) {
-    PageView &curr = pages_[curr_page_];
+  PageView &curr = pages_[curr_page_];
 
+  if (window_size_changed_) {
     const sf::Vector2f new_center{window_size_.x * 0.5f, window_size_.y * 0.5f};
 
     if (curr.getGlobalBounds().size.x <= window_size_.x) {
@@ -263,26 +259,22 @@ void PDFView::updatePagePositions() {
     window_size_changed_ = false;
   }
 
-  for (int i = static_cast<int>(curr_page_) - 1; i >= static_cast<int>(front_page_); --i) {
-    const auto below_pos = pages_[i + 1].getPosition();
-    const auto below_size = pages_[i + 1].getGlobalBounds().size;
-    const auto curr_size = pages_[i].getGlobalBounds().size;
+  updateNeighbourPositions();
 
-    float x = below_pos.x;
-    float y = below_pos.y - below_size.y * 0.5f - gap_ - curr_size.y * 0.5f;
+  const float front_top = pages_[front_page_].getPosition().y -
+                          pages_[front_page_].getGlobalBounds().size.y * 0.5f;
+  const float back_bottom = pages_[back_page_].getPosition().y +
+                            pages_[back_page_].getGlobalBounds().size.y * 0.5f;
+  const float curr_y = pages_[curr_page_].getPosition().y;
 
-    pages_[i].setPosition({x, y});
-  }
-
-  for (std::size_t i = curr_page_ + 1; i <= back_page_; ++i) {
-    const auto above_pos = pages_[i - 1].getPosition();
-    const auto above_size = pages_[i - 1].getGlobalBounds().size;
-    const auto curr_size = pages_[i].getGlobalBounds().size;
-
-    float x = above_pos.x;
-    float y = above_pos.y + above_size.y * 0.5f + gap_ + curr_size.y * 0.5f;
-
-    pages_[i].setPosition({x, y});
+  if (front_top > 0.f) {
+    curr.setPosition({pages_[curr_page_].getPosition().x, curr_y - front_top});
+    putPageInNonFracPos(curr);
+    updateNeighbourPositions();
+  } else if (back_bottom < window_size_.y) {
+    pages_[curr_page_].setPosition({curr.getPosition().x, curr_y + (window_size_.y - back_bottom)});
+    putPageInNonFracPos(curr);
+    updateNeighbourPositions();
   }
 }
 
@@ -315,9 +307,26 @@ void PDFView::setRotate(int rotate) {
   pending_page_update_ = true;
 }
 
-float PDFView::map(float value, float src_min, float src_max, float dst_min, float dst_max) {
-  float t = (value - src_min) / (src_max - src_min);
-  return std::lerp(dst_min, dst_max, t);
+void PDFView::updateNeighbourPositions() {
+  for (int i = static_cast<int>(curr_page_) - 1; i >= static_cast<int>(front_page_); --i) {
+    const auto below_pos = pages_[i + 1].getPosition();
+    const auto below_size = pages_[i + 1].getGlobalBounds().size;
+    const auto curr_size = pages_[i].getGlobalBounds().size;
+
+    float x = below_pos.x;
+    float y = below_pos.y - below_size.y * 0.5f - gap_ - curr_size.y * 0.5f;
+    pages_[i].setPosition({x, y});
+  }
+
+  for (std::size_t i = curr_page_ + 1; i <= back_page_; ++i) {
+    const auto above_pos = pages_[i - 1].getPosition();
+    const auto above_size = pages_[i - 1].getGlobalBounds().size;
+    const auto curr_size = pages_[i].getGlobalBounds().size;
+
+    float x = above_pos.x;
+    float y = above_pos.y + above_size.y * 0.5f + gap_ + curr_size.y * 0.5f;
+    pages_[i].setPosition({x, y});
+  }
 }
 
 void PDFView::putPageInNonFracPos(PageView &page) {
@@ -328,6 +337,11 @@ void PDFView::putPageInNonFracPos(PageView &page) {
   const float x = std::round(loc.x + offset.x) - offset.x;
   const float y = std::round(loc.y + offset.y) - offset.y;
   page.getSprite().setPosition({x, y});
+}
+
+float PDFView::map(float value, float src_min, float src_max, float dst_min, float dst_max) {
+  float t = (value - src_min) / (src_max - src_min);
+  return std::lerp(dst_min, dst_max, t);
 }
 
 void PDFView::panCurrentPage(sf::Vector2f delta) {
@@ -366,12 +380,14 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
       back++;
       pdf::PDFRenderKey key{static_cast<size_t>(back), zoom, rotate};
       total_height += scheduler_.getPageSize(key).y;
+      expanded = true;
     }
 
     if (front > 0) {
       --front;
       pdf::PDFRenderKey key{static_cast<size_t>(front), zoom, rotate};
       total_height += scheduler_.getPageSize(key).y;
+      expanded = true;
     }
 
     if (!expanded)
@@ -399,8 +415,6 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
 
   front_page_ = static_cast<std::size_t>(front);
   back_page_ = static_cast<std::size_t>(back);
-
-  std::println("requested for pages {}..{}", front_page_, back_page_);
 }
 
 void PDFView::resetView() {

@@ -50,7 +50,7 @@ void RenderScheduler::request(const pdf::PDFRenderKey &key) {
     if (!pending_.insert(key).second)
       return;
 
-    if (job_queue_.size() >= workers_.size()) {
+    if (job_queue_.size() >= settings::page_cache_size_) {
       pending_.erase(job_queue_.front());
       job_queue_.pop_front();
     }
@@ -128,8 +128,8 @@ void RenderScheduler::workerLoop(std::size_t idx) {
     if (stop_ && job_queue_.empty())
       return;
 
-    key = job_queue_.back();
-    job_queue_.pop_back();
+    key = job_queue_.front();
+    job_queue_.pop_front();
     active_jobs_++;
 
     fz_context *ctx = slots_[idx].ctx.get();

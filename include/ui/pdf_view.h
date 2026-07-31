@@ -38,8 +38,9 @@ private:
   void resetView();
   void panCurrentPage(sf::Vector2f delta);
 
-  float map(float value, float src_min, float src_max, float dst_min, float dst_max);
   void putPageInNonFracPos(PageView &page);
+  void updateNeighbourPositions();
+  float map(float value, float src_min, float src_max, float dst_min, float dst_max);
 
 private:
   struct ScrollWheelDirty {

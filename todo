@@ -1,4 +1,4 @@
-- multi page
 - get page text and other info
 - add selecting text
 - add highlighting text
+- dont let user scroll from top page edge or bottom page edge and also left and right 
