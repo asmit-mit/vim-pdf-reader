@@ -75,6 +75,8 @@ private:
   bool window_size_changed_;
   bool pending_page_update_;
   bool started_scrolling_;
+  bool page_positions_dirty_;
+  bool sync_state_dirty_;
 
   sf::Vector2f window_size_;
   sf::Vector2f old_window_size_;
