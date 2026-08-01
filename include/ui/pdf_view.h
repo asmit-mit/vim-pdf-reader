@@ -40,6 +40,7 @@ private:
 
   void putPageInNonFracPos(PageView &page);
   void updateNeighbourPositions();
+  void clampAnchorHorizontally();
   float map(float value, float src_min, float src_max, float dst_min, float dst_max);
 
 private:
@@ -60,10 +61,6 @@ private:
   pdf::PDFDocument &document_;
   core::RenderScheduler &scheduler_;
 
-  // ui::ScrollWheel horizontal_wheel_;
-  // ui::ScrollWheel vertical_wheel_;
-  // ScrollWheelDirty scrollwheel_dirty_;
-
   sf::Texture dummy_;
   sf::Clock scale_rot_update_timer_;
   VisualInfo target_state_;
@@ -81,9 +78,11 @@ private:
 
   sf::Vector2f window_size_;
   sf::Vector2f old_window_size_;
+  sf::Vector2f anchor_page_pos_before_scroll_;
   sf::Keyboard::Key prev_key_ = sf::Keyboard::Key::Unknown;
 
   std::string filepath_;
+  std::size_t page_with_max_width_;
 
   static constexpr float gap_ = 1.f;
   static constexpr float scrollwheel_width_ = 8.f;
@@ -91,6 +90,7 @@ private:
   static constexpr float scroll_dist_ = 40.f;
   static constexpr float min_zoom_ = 0.2f;
   static constexpr float max_zoom_ = 5.f;
+  static constexpr float epsilon_ = 1e-5f;
 };
 
 } // namespace ui

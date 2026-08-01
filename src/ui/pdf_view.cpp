@@ -1,4 +1,3 @@
-#include <print>
 #include <stdexcept>
 
 #include "pdf/pdf_renderer.h"
@@ -13,9 +12,6 @@ PDFView::PDFView(
     pdf::PDFDocument &document, core::RenderScheduler &scheduler, core::EventBus &event_bus
 )
     : event_bus_(event_bus), document_(document), scheduler_(scheduler) {
-  // horizontal_wheel_.setFillColor(utils::hexToRGB(settings::scrollwheel_color_));
-  // vertical_wheel_.setFillColor(utils::hexToRGB(settings::scrollwheel_color_));
-
   has_document_ = false;
   should_take_input_ = false;
   need_initial_pos_ = false;
@@ -26,6 +22,9 @@ PDFView::PDFView(
   front_page_ = 0;
   anchor_page_ = 0;
   back_page_ = 0;
+  anchor_page_pos_before_scroll_ = {0.f, 0.f};
+
+  page_with_max_width_ = 0;
 
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
@@ -129,6 +128,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     has_document_ = true;
     resetView();
     onSwitchPage(anchor_page_);
+    page_with_max_width_ = document_.pageWithMaxWidth();
 
     event_bus_.emit("statusbar.pdf_path", utils::resolvePath(filepath));
     event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
@@ -183,8 +183,6 @@ void PDFView::setInitialPagePos() {
     y = window_size_.y * 0.5f - utils::cmdline_height_;
 
   pages_[anchor_page_].setPosition({x, y});
-  putPageInNonFracPos(pages_[anchor_page_]);
-
   need_initial_pos_ = false;
 }
 
@@ -224,8 +222,6 @@ void PDFView::syncWithTargetState() {
       const auto &offset = window_center - focus_after;
       page.getSprite().move(offset);
     }
-
-    putPageInNonFracPos(page);
   }
 }
 
@@ -263,10 +259,11 @@ void PDFView::updatePagePositions() {
       curr.getSprite().move(new_center - focus_after);
     }
 
-    putPageInNonFracPos(curr);
     window_size_changed_ = false;
   }
 
+  clampAnchorHorizontally();
+  putPageInNonFracPos(curr);
   updateNeighbourPositions();
 
   const float front_top = pages_[front_page_].getPosition().y -
@@ -277,33 +274,24 @@ void PDFView::updatePagePositions() {
 
   if (front_page_ == back_page_ && pages_[front_page_].getGlobalBounds().size.y < window_size_.y) {
     curr.setPosition({window_size_.x * 0.5f, window_size_.y * 0.5f - utils::cmdline_height_});
-    putPageInNonFracPos(curr);
-    updateNeighbourPositions();
-    return;
-  }
-
-  if (front_top > 0.f) {
+  } else if (front_top > 0.f) {
     curr.setPosition({pages_[anchor_page_].getPosition().x, curr_y - front_top});
-    putPageInNonFracPos(curr);
-    updateNeighbourPositions();
-    return;
-  }
-
-  if (back_bottom < window_size_.y) {
+  } else if (back_bottom < window_size_.y) {
     pages_[anchor_page_].setPosition(
         {curr.getPosition().x, curr_y + (window_size_.y - back_bottom)}
     );
-    putPageInNonFracPos(curr);
-    updateNeighbourPositions();
-    return;
   }
+
+  putPageInNonFracPos(curr);
+  updateNeighbourPositions();
 }
 
 void PDFView::checkForAnchorPage() {
   const sf::Vector2f window_center = {window_size_.x * 0.5f, window_size_.y * 0.5f};
   for (std::size_t i = front_page_; i < back_page_; i++) {
     if (pages_[i].getSprite().getGlobalBounds().contains(window_center)) {
-      if (anchor_page_ != i && started_scrolling_) {
+      if (anchor_page_ != i && (started_scrolling_ && pages_[anchor_page_].getPosition() !=
+                                                          anchor_page_pos_before_scroll_)) {
         anchor_page_ = i;
         requestPage(anchor_page_, target_state_.zoom, target_state_.rotate);
         event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
@@ -361,6 +349,28 @@ void PDFView::updateNeighbourPositions() {
   }
 }
 
+void PDFView::clampAnchorHorizontally() {
+  auto &sprite = pages_[anchor_page_].getSprite();
+
+  const float window_w = window_size_.x;
+  const float page_w = static_cast<float>(
+      scheduler_.getPageSize({page_with_max_width_, target_state_.zoom, target_state_.rotate}).x
+  );
+  const float half_w = page_w * 0.5f;
+
+  sf::Vector2f pos = sprite.getPosition();
+
+  if (page_w <= window_w) {
+    pos.x = window_w * 0.5f;
+  } else {
+    const float min_x = window_w - half_w;
+    const float max_x = half_w;
+    pos.x = std::clamp(pos.x, min_x, max_x);
+  }
+
+  sprite.setPosition(pos);
+}
+
 void PDFView::putPageInNonFracPos(PageView &page) {
   const auto &loc = page.getSprite().getPosition();
   page.getSprite().setPosition({0.f, 0.f});
@@ -383,9 +393,12 @@ void PDFView::panCurrentPage(sf::Vector2f delta) {
   if (!pages_[anchor_page_].hasTexture())
     return;
 
+  if (std::abs(delta.x) < epsilon_) {
+    anchor_page_pos_before_scroll_ = pages_[anchor_page_].getPosition();
+    started_scrolling_ = true;
+  }
+
   pages_[anchor_page_].getSprite().move(delta);
-  putPageInNonFracPos(pages_[anchor_page_]);
-  started_scrolling_ = true;
 }
 
 void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
@@ -449,6 +462,8 @@ void PDFView::resetView() {
 
   need_initial_pos_ = true;
   window_size_changed_ = false;
+
+  page_with_max_width_ = 0;
 
   front_page_ = 0;
   anchor_page_ = 0;

@@ -37,10 +37,20 @@ void PDFDocument::openDocument(const std::string &filepath) {
     throw std::runtime_error("Failed to count number of pages");
   }
 
+  int max_width = 0;
+  page_with_max_width_ = 0;
+
   pages_.reserve(page_count);
   for (int i = 0; i < page_count; i++) {
     fz_page *page = fz_load_page(ctx_, doc_, i);
     fz_rect bounds = fz_bound_page(ctx_, page);
+    int width = std::abs(bounds.x0 - bounds.x1);
+
+    if (width > max_width) {
+      page_with_max_width_ = i;
+      max_width = width;
+    }
+
     pages_.emplace_back(i, bounds);
   }
 }
@@ -52,6 +62,12 @@ void PDFDocument::closeDocument() {
   }
 
   pages_.clear();
+}
+
+std::size_t PDFDocument::pageWithMaxWidth() const {
+  if (!doc_)
+    return 0;
+  return page_with_max_width_;
 }
 
 PDFPage &PDFDocument::getPage(std::size_t page_idx) {

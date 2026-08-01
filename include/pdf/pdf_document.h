@@ -26,6 +26,7 @@ public:
   void closeDocument();
   PDFPage &getPage(std::size_t page_idx);
 
+  std::size_t pageWithMaxWidth() const;
   std::size_t size() const;
 
   FzContextPtr cloneContext() const;
@@ -40,6 +41,7 @@ private:
   fz_locks_context locks_;
 
   std::vector<pdf::PDFPage> pages_;
+  std::size_t page_with_max_width_;
 
   fz_context *ctx_;
   fz_document *doc_;
