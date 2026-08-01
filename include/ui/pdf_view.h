@@ -30,7 +30,7 @@ private:
   void setInitialPagePos();
   void renderRequestedPages();
   void updatePagePositions();
-  void checkForCurrentPage();
+  void checkForAnchorPage();
 
   void setZoom(float zoom);
   void setRotate(int rotate);
@@ -68,7 +68,7 @@ private:
   sf::Clock scale_rot_update_timer_;
   VisualInfo target_state_;
 
-  std::size_t curr_page_;
+  std::size_t anchor_page_;
   std::size_t front_page_;
   std::size_t back_page_;
 
@@ -77,10 +77,13 @@ private:
   bool need_initial_pos_;
   bool window_size_changed_;
   bool pending_page_update_;
+  bool started_scrolling_;
 
   sf::Vector2f window_size_;
   sf::Vector2f old_window_size_;
   sf::Keyboard::Key prev_key_ = sf::Keyboard::Key::Unknown;
+
+  std::string filepath_;
 
   static constexpr float gap_ = 1.f;
   static constexpr float scrollwheel_width_ = 8.f;

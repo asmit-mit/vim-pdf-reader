@@ -1,3 +1,4 @@
+#include <print>
 #include <stdexcept>
 
 #include "pdf/pdf_renderer.h"
@@ -20,15 +21,20 @@ PDFView::PDFView(
   need_initial_pos_ = false;
   window_size_changed_ = false;
   pending_page_update_ = false;
+  started_scrolling_ = false;
 
   front_page_ = 0;
-  curr_page_ = 0;
+  anchor_page_ = 0;
   back_page_ = 0;
 
   event_bus_
       .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
         onOpenDocument(filepath);
       });
+
+  event_bus_.subscribe<bool>("cmd_processor.reload_document", [this](bool) {
+    onOpenDocument(filepath_);
+  });
 
   event_bus_.subscribe<bool>("cmd_processor.close_document", [this](bool) { onCloseDocument(); });
 
@@ -58,7 +64,7 @@ void PDFView::update() {
 
   if (pending_page_update_ &&
       scale_rot_update_timer_.getElapsedTime().asMilliseconds() > scale_rot_debounce_ms_) {
-    requestPage(curr_page_, target_state_.zoom, target_state_.rotate);
+    requestPage(anchor_page_, target_state_.zoom, target_state_.rotate);
     pending_page_update_ = false;
   }
 
@@ -66,7 +72,7 @@ void PDFView::update() {
   setInitialPagePos();
   syncWithTargetState();
   updatePagePositions();
-  checkForCurrentPage();
+  checkForAnchorPage();
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
@@ -79,12 +85,12 @@ void PDFView::handleEvent(const sf::Event &event) {
       if (key->control)
         panCurrentPage({0.f, window_size_.y * 0.5f});
       else
-        onSwitchPage(std::max(0, (int)curr_page_ - 1));
+        onSwitchPage(std::max(0, (int)anchor_page_ - 1));
     } else if (key->code == sf::Keyboard::Key::D) {
       if (key->control)
         panCurrentPage({0.f, -window_size_.y * 0.5f});
       else
-        onSwitchPage(std::min(document_.size() - 1, curr_page_ + 1));
+        onSwitchPage(std::min(document_.size() - 1, anchor_page_ + 1));
     } else if (key->code == sf::Keyboard::Key::Equal && key->control) {
       setZoom(target_state_.zoom + settings::delta_zoom_);
     } else if (key->code == sf::Keyboard::Key::Hyphen && key->control) {
@@ -116,15 +122,16 @@ void PDFView::onOpenDocument(const std::string &filepath) {
   try {
     scheduler_.quiesce();
     document_.openDocument(utils::resolvePath(filepath));
+    filepath_ = filepath;
     scheduler_.clearCache();
     scheduler_.resume();
 
     has_document_ = true;
     resetView();
-    onSwitchPage(curr_page_);
+    onSwitchPage(anchor_page_);
 
     event_bus_.emit("statusbar.pdf_path", utils::resolvePath(filepath));
-    event_bus_.emit("statusbar.page_number", curr_page_ + 1);
+    event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
     event_bus_.emit("statusbar.total_pages", document_.size());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
   } catch (const std::runtime_error &e) {
@@ -154,28 +161,29 @@ void PDFView::onSwitchPage(int page_idx) {
     event_bus_.emit("cmdline.msg", msg);
     return;
   }
-  curr_page_ = static_cast<std::size_t>(page_idx);
-  requestPage(curr_page_, target_state_.zoom, target_state_.rotate);
-  event_bus_.emit("statusbar.page_number", curr_page_ + 1);
+  anchor_page_ = static_cast<std::size_t>(page_idx);
+  requestPage(anchor_page_, target_state_.zoom, target_state_.rotate);
+  event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
   need_initial_pos_ = true;
+  started_scrolling_ = false;
 }
 
 void PDFView::setInitialPagePos() {
   if (!need_initial_pos_)
     return;
 
-  if (!pages_[curr_page_].hasTexture())
+  if (!pages_[anchor_page_].hasTexture())
     return;
 
-  const auto size = pages_[curr_page_].getGlobalBounds().size;
+  const auto size = pages_[anchor_page_].getGlobalBounds().size;
 
   float x = window_size_.x * 0.5f;
   float y = size.y * 0.5f;
   if (size.y <= window_size_.y)
     y = window_size_.y * 0.5f - utils::cmdline_height_;
 
-  pages_[curr_page_].setPosition({x, y});
-  putPageInNonFracPos(pages_[curr_page_]);
+  pages_[anchor_page_].setPosition({x, y});
+  putPageInNonFracPos(pages_[anchor_page_]);
 
   need_initial_pos_ = false;
 }
@@ -199,7 +207,7 @@ void PDFView::syncWithTargetState() {
     const float scale_x = current.x ? target_w / static_cast<float>(current.x) : 1.f;
     const float scale_y = current.y ? target_h / static_cast<float>(current.y) : 1.f;
 
-    if (i != curr_page_) {
+    if (i != anchor_page_) {
       page.setScale({scale_x, scale_y});
       page.setRotation(delta);
       continue;
@@ -238,10 +246,10 @@ void PDFView::renderRequestedPages() {
 }
 
 void PDFView::updatePagePositions() {
-  if (!pages_[curr_page_].hasTexture())
+  if (!pages_[anchor_page_].hasTexture())
     return;
 
-  PageView &curr = pages_[curr_page_];
+  PageView &curr = pages_[anchor_page_];
 
   if (window_size_changed_) {
     const sf::Vector2f new_center{window_size_.x * 0.5f, window_size_.y * 0.5f};
@@ -265,20 +273,44 @@ void PDFView::updatePagePositions() {
                           pages_[front_page_].getGlobalBounds().size.y * 0.5f;
   const float back_bottom = pages_[back_page_].getPosition().y +
                             pages_[back_page_].getGlobalBounds().size.y * 0.5f;
-  const float curr_y = pages_[curr_page_].getPosition().y;
+  const float curr_y = pages_[anchor_page_].getPosition().y;
+
+  if (front_page_ == back_page_ && pages_[front_page_].getGlobalBounds().size.y < window_size_.y) {
+    curr.setPosition({window_size_.x * 0.5f, window_size_.y * 0.5f - utils::cmdline_height_});
+    putPageInNonFracPos(curr);
+    updateNeighbourPositions();
+    return;
+  }
 
   if (front_top > 0.f) {
-    curr.setPosition({pages_[curr_page_].getPosition().x, curr_y - front_top});
+    curr.setPosition({pages_[anchor_page_].getPosition().x, curr_y - front_top});
     putPageInNonFracPos(curr);
     updateNeighbourPositions();
-  } else if (back_bottom < window_size_.y) {
-    pages_[curr_page_].setPosition({curr.getPosition().x, curr_y + (window_size_.y - back_bottom)});
+    return;
+  }
+
+  if (back_bottom < window_size_.y) {
+    pages_[anchor_page_].setPosition(
+        {curr.getPosition().x, curr_y + (window_size_.y - back_bottom)}
+    );
     putPageInNonFracPos(curr);
     updateNeighbourPositions();
+    return;
   }
 }
 
-void PDFView::checkForCurrentPage() {}
+void PDFView::checkForAnchorPage() {
+  const sf::Vector2f window_center = {window_size_.x * 0.5f, window_size_.y * 0.5f};
+  for (std::size_t i = front_page_; i < back_page_; i++) {
+    if (pages_[i].getSprite().getGlobalBounds().contains(window_center)) {
+      if (anchor_page_ != i && started_scrolling_) {
+        anchor_page_ = i;
+        requestPage(anchor_page_, target_state_.zoom, target_state_.rotate);
+        event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
+      }
+    }
+  }
+}
 
 void PDFView::setZoom(float new_zoom) {
   if (!has_document_)
@@ -308,7 +340,7 @@ void PDFView::setRotate(int rotate) {
 }
 
 void PDFView::updateNeighbourPositions() {
-  for (int i = static_cast<int>(curr_page_) - 1; i >= static_cast<int>(front_page_); --i) {
+  for (int i = static_cast<int>(anchor_page_) - 1; i >= static_cast<int>(front_page_); --i) {
     const auto below_pos = pages_[i + 1].getPosition();
     const auto below_size = pages_[i + 1].getGlobalBounds().size;
     const auto curr_size = pages_[i].getGlobalBounds().size;
@@ -318,7 +350,7 @@ void PDFView::updateNeighbourPositions() {
     pages_[i].setPosition({x, y});
   }
 
-  for (std::size_t i = curr_page_ + 1; i <= back_page_; ++i) {
+  for (std::size_t i = anchor_page_ + 1; i <= back_page_; ++i) {
     const auto above_pos = pages_[i - 1].getPosition();
     const auto above_size = pages_[i - 1].getGlobalBounds().size;
     const auto curr_size = pages_[i].getGlobalBounds().size;
@@ -348,18 +380,12 @@ void PDFView::panCurrentPage(sf::Vector2f delta) {
   if (!has_document_)
     return;
 
-  if (!pages_[curr_page_].hasTexture())
+  if (!pages_[anchor_page_].hasTexture())
     return;
 
-  const auto &size = pages_[curr_page_].getGlobalBounds().size;
-  if (size.x <= window_size_.x)
-    delta.x = 0.f;
-  if (delta.x == 0.f && delta.y == 0.f)
-    return;
-
-  const auto pos = pages_[curr_page_].getPosition();
-  pages_[curr_page_].setPosition({pos.x + delta.x, pos.y + delta.y});
-  putPageInNonFracPos(pages_[curr_page_]);
+  pages_[anchor_page_].getSprite().move(delta);
+  putPageInNonFracPos(pages_[anchor_page_]);
+  started_scrolling_ = true;
 }
 
 void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
@@ -425,7 +451,7 @@ void PDFView::resetView() {
   window_size_changed_ = false;
 
   front_page_ = 0;
-  curr_page_ = 0;
+  anchor_page_ = 0;
   back_page_ = 0;
 
   target_state_.zoom = 1.f;
