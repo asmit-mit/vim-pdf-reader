@@ -135,10 +135,10 @@ void RenderScheduler::workerLoop(std::size_t idx) {
     fz_context *ctx = slots_[idx].ctx.get();
     lock.unlock();
 
-    sf::Image image = renderer_.render(ctx, document_.getDoc(), key);
+    renderer_.render(ctx, document_.getDoc(), key, slots_[idx].rgba, slots_[idx].image);
 
     lock.lock();
-    image_cache_.put(key, std::move(image));
+    image_cache_.put(key, std::move(slots_[idx].image));
     pending_.erase(key);
 
     active_jobs_--;

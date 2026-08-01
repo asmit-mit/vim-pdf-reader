@@ -13,9 +13,6 @@
 
 namespace core {
 
-using TextureCache = utils::LRUCache<pdf::PDFRenderKey, sf::Texture, pdf::PDFRenderKeyHash>;
-using ImageCache = utils::LRUCache<pdf::PDFRenderKey, sf::Image, pdf::PDFRenderKeyHash>;
-
 class RenderScheduler {
 public:
   RenderScheduler(pdf::PDFDocument &document, pdf::PDFRenderer &renderer, std::size_t worker_count);
@@ -34,12 +31,17 @@ private:
   struct WorkerSlot {
     std::size_t index;
     pdf::FzContextPtr ctx;
+    std::vector<uint8_t> rgba;
+    sf::Image image;
   };
 
   void workerLoop(std::size_t idx);
   void clearCacheLocked();
 
 private:
+  using TextureCache = utils::LRUCache<pdf::PDFRenderKey, sf::Texture, pdf::PDFRenderKeyHash>;
+  using ImageCache = utils::LRUCache<pdf::PDFRenderKey, sf::Image, pdf::PDFRenderKeyHash>;
+
   pdf::PDFDocument &document_;
   pdf::PDFRenderer &renderer_;
 

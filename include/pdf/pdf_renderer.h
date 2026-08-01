@@ -35,6 +35,34 @@ struct PDFRenderKeyHash {
   }
 };
 
+struct FzRectKey {
+  fz_rect bounds;
+  PDFRenderKey key;
+
+  bool operator==(const FzRectKey &other) const {
+    return (bounds.x1 - bounds.x0) == (other.bounds.x1 - other.bounds.x0) &&
+           (bounds.y1 - bounds.y0) == (other.bounds.y1 - other.bounds.y0) &&
+           key.zoom == other.key.zoom && key.rotate == other.key.rotate;
+  }
+};
+
+struct FzRectHash {
+  std::size_t operator()(const FzRectKey &key) const {
+    std::size_t seed = 0;
+
+    auto hashCombine = [&seed](std::size_t value) {
+      seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    };
+
+    hashCombine(std::hash<float>{}(key.bounds.x1 - key.bounds.x0));
+    hashCombine(std::hash<float>{}(key.bounds.y1 - key.bounds.y0));
+    hashCombine(std::hash<float>{}(key.key.zoom));
+    hashCombine(std::hash<int>{}(key.key.rotate));
+
+    return seed;
+  }
+};
+
 class PDFPageDisplayList {
 public:
   PDFPageDisplayList() = default;
@@ -59,20 +87,29 @@ class PDFRenderer {
 public:
   explicit PDFRenderer();
 
-  const sf::Image render(fz_context *ctx, fz_document *doc, const PDFRenderKey &key);
-  sf::Vector2u getPageSize(fz_rect bounds, const PDFRenderKey &key);
+  void render(
+      fz_context *ctx,
+      fz_document *doc,
+      const PDFRenderKey &key,
+      std::vector<uint8_t> &rgba,
+      sf::Image &image
+  );
+  sf::Vector2u getPageSize(const fz_rect &bounds, const PDFRenderKey &key);
   void clearCache();
 
 private:
   fz_display_list *getPageDisplayList(std::size_t page_idx, fz_context *ctx, fz_document *doc);
   fz_display_list *getOrLoadDisplayList(std::size_t page_idx, fz_context *ctx, fz_document *doc);
   fz_pixmap *getPixmapFromDisplayList(fz_context *ctx, fz_display_list *list, float zoom, int rot);
-  sf::Image rastarizeToBitmap(fz_context *ctx, fz_pixmap *pix);
+  void
+  rastarizeToBitmap(fz_context *ctx, fz_pixmap *pix, std::vector<uint8_t> &rgba, sf::Image &image);
 
 private:
   using PDFPageDisplayListCache = utils::LRUCache<std::size_t, pdf::PDFPageDisplayList>;
+  using FzRectCache = utils::LRUCache<FzRectKey, sf::Vector2u, FzRectHash>;
 
-  PDFPageDisplayListCache cache_;
+  PDFPageDisplayListCache display_list_cache_;
+  FzRectCache fz_rect_cache_;
   std::mutex display_mutex_;
 };
 

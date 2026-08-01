@@ -270,16 +270,15 @@ void PDFView::updatePagePositions() {
                           pages_[front_page_].getGlobalBounds().size.y * 0.5f;
   const float back_bottom = pages_[back_page_].getPosition().y +
                             pages_[back_page_].getGlobalBounds().size.y * 0.5f;
+  const float bottom_limit = window_size_.y - utils::cmdline_height_;
   const float curr_y = pages_[anchor_page_].getPosition().y;
 
   if (front_page_ == back_page_ && pages_[front_page_].getGlobalBounds().size.y < window_size_.y) {
     curr.setPosition({window_size_.x * 0.5f, window_size_.y * 0.5f - utils::cmdline_height_});
   } else if (front_top > 0.f) {
     curr.setPosition({pages_[anchor_page_].getPosition().x, curr_y - front_top});
-  } else if (back_bottom < window_size_.y) {
-    pages_[anchor_page_].setPosition(
-        {curr.getPosition().x, curr_y + (window_size_.y - back_bottom)}
-    );
+  } else if (back_bottom < bottom_limit) {
+    pages_[anchor_page_].setPosition({curr.getPosition().x, curr_y + (bottom_limit - back_bottom)});
   }
 
   putPageInNonFracPos(curr);

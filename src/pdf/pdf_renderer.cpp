@@ -41,39 +41,56 @@ void PDFPageDisplayList::reset() {
   }
 }
 
-PDFRenderer::PDFRenderer() : cache_(settings::display_list_cache_size_) {}
+PDFRenderer::PDFRenderer()
+    : display_list_cache_(settings::display_list_cache_size_),
+      fz_rect_cache_(settings::display_list_cache_size_) {}
 
-const sf::Image PDFRenderer::render(fz_context *ctx, fz_document *doc, const PDFRenderKey &key) {
+void PDFRenderer::render(
+    fz_context *ctx,
+    fz_document *doc,
+    const PDFRenderKey &key,
+    std::vector<uint8_t> &rgba,
+    sf::Image &image
+) {
   fz_display_list *list = getOrLoadDisplayList(key.page_idx, ctx, doc);
   fz_pixmap *pix = getPixmapFromDisplayList(ctx, list, key.zoom, key.rotate);
-  return rastarizeToBitmap(ctx, pix);
+  rastarizeToBitmap(ctx, pix, rgba, image);
 }
 
-sf::Vector2u PDFRenderer::getPageSize(fz_rect bounds, const PDFRenderKey &key) {
+sf::Vector2u PDFRenderer::getPageSize(const fz_rect &bounds, const PDFRenderKey &key) {
+  FzRectKey fz_rect_key{bounds, key};
+  if (auto *cached = fz_rect_cache_.get(fz_rect_key))
+    return *cached;
+
   fz_matrix ctm = fz_scale(key.zoom, key.zoom);
   ctm = fz_pre_rotate(ctm, key.rotate * 90.f);
 
   fz_rect transformed = fz_transform_rect(bounds, ctm);
   fz_irect bbox = fz_round_rect(transformed);
-  return {static_cast<unsigned int>(bbox.x1 - bbox.x0), static_cast<unsigned int>(bbox.y1 - bbox.y0)};
+
+  sf::Vector2u
+      size{static_cast<unsigned>(bbox.x1 - bbox.x0), static_cast<unsigned>(bbox.y1 - bbox.y0)};
+  fz_rect_cache_.put(fz_rect_key, size);
+
+  return size;
 }
 
 void PDFRenderer::clearCache() {
   std::lock_guard lock(display_mutex_);
-  cache_.clear();
+  display_list_cache_.clear();
 }
 
 fz_display_list *
 PDFRenderer::getOrLoadDisplayList(std::size_t page_idx, fz_context *ctx, fz_document *doc) {
   std::lock_guard lock(display_mutex_);
 
-  if (!cache_.contains(page_idx)) {
+  if (!display_list_cache_.contains(page_idx)) {
     fz_display_list *list = getPageDisplayList(page_idx, ctx, doc);
-    cache_.put(page_idx, pdf::PDFPageDisplayList(ctx, list));
+    display_list_cache_.put(page_idx, pdf::PDFPageDisplayList(ctx, list));
     return list;
   }
 
-  return cache_.get(page_idx)->displayList();
+  return display_list_cache_.get(page_idx)->displayList();
 }
 
 fz_display_list *
@@ -134,13 +151,15 @@ PDFRenderer::getPixmapFromDisplayList(fz_context *ctx, fz_display_list *list, fl
   return pix;
 }
 
-sf::Image PDFRenderer::rastarizeToBitmap(fz_context *ctx, fz_pixmap *pix) {
+void PDFRenderer::rastarizeToBitmap(
+    fz_context *ctx, fz_pixmap *pix, std::vector<uint8_t> &rgba, sf::Image &image
+) {
   const int width = fz_pixmap_width(ctx, pix);
   const int height = fz_pixmap_height(ctx, pix);
   const int stride = fz_pixmap_stride(ctx, pix);
   const unsigned char *samples = fz_pixmap_samples(ctx, pix);
 
-  std::vector<uint8_t> rgba(width * height * 4);
+  rgba.resize(width * height * 4);
   for (int y = 0; y < height; ++y) {
     const unsigned char *src = samples + y * stride;
     for (int x = 0; x < width; ++x) {
@@ -151,11 +170,9 @@ sf::Image PDFRenderer::rastarizeToBitmap(fz_context *ctx, fz_pixmap *pix) {
     }
   }
 
-  sf::Image image({static_cast<unsigned>(width), static_cast<unsigned>(height)}, rgba.data());
+  image = sf::Image({static_cast<unsigned>(width), static_cast<unsigned>(height)}, rgba.data());
 
   fz_drop_pixmap(ctx, pix);
-
-  return image;
 }
 
 } // namespace pdf
