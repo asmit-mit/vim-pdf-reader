@@ -56,16 +56,6 @@ void Cmdline::update() {
   if (!visible_)
     return;
 
-  const float curr_x_ = 0.f;
-  const float curr_y_ = window_size_.y - utils::cmdline_height_;
-  float round_y = std::round(curr_y_) + 1.f;
-
-  display_area_.setPosition({curr_x_, round_y});
-  label_.setPosition({utils::padding - 4.f, round_y});
-
-  const auto bounds = label_.getGlobalBounds();
-  textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, round_y});
-
   completions_.update();
   textbox_.update();
 }
@@ -115,7 +105,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
       } catch (const std::runtime_error &e) {
         event_bus_.emit("cmdline.msg", e.what());
       }
-      event_bus_.emit("ui.focus", ui::UIElements::PDFView);
+      event_bus_.emit("ui.focus", ui::UIElements::ErrorLine);
       reset();
     } else if (key->code == sf::Keyboard::Key::P && key->control) {
       textbox_.setText(cmd_history_.getPrevious());
@@ -143,6 +133,16 @@ void Cmdline::onResize(const sf::Vector2f &size) {
   window_size_ = size;
   display_area_.setSize({size.x, utils::cmdline_height_});
   completions_.onResize(size);
+
+  const float curr_x_ = 0.f;
+  const float curr_y_ = window_size_.y - utils::cmdline_height_;
+  float round_y = std::round(curr_y_) + 1.f;
+
+  display_area_.setPosition({curr_x_, round_y});
+  label_.setPosition({utils::padding - 4.f, round_y});
+
+  const auto bounds = label_.getGlobalBounds();
+  textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, round_y});
 }
 
 void Cmdline::reset() {

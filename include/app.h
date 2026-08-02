@@ -7,6 +7,7 @@
 #include "core/event_bus.h"
 #include "core/render_scheduler.h"
 #include "ui/cmdline.h"
+#include "ui/error_line.h"
 #include "ui/pdf_view.h"
 #include "ui/statusbar.h"
 #include "ui/ui_elements.h"
@@ -38,6 +39,7 @@ private:
   ui::Cmdline cmdline_;
   ui::Statusbar statusbar_;
   ui::PDFView pdf_view_;
+  ui::ErrorLine error_line_;
   ui::UIElements focus_;
 
   const unsigned int res_x_ = 640;

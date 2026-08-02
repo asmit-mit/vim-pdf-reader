@@ -26,7 +26,7 @@ private:
   std::size_t page_idx_;
   std::size_t total_pages_;
   bool page_details_changed_;
-  bool cmdline_visible_;
+  bool move_up_;
   float curr_x_, curr_y_;
 
   static constexpr float height_ = 24.0;
