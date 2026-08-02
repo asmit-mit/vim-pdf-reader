@@ -5,7 +5,8 @@
 
 App::App()
     : font_normal_(settings::font_normal_), font_bold_(settings::font_bold_),
-      font_italic_(settings::font_italic_), document_(), renderer_(), cmd_processor_(event_bus_),
+      font_italic_(settings::font_italic_), document_(), renderer_(),
+      cmd_processor_(event_bus_, cmd_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
       cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_),
       statusbar_(font_normal_, event_bus_), pdf_view_(document_, render_scheduler_, event_bus_) {

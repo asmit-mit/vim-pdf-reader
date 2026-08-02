@@ -1,3 +1,4 @@
+#include <print>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -7,20 +8,22 @@
 
 namespace core {
 
-CmdProcessor::CmdProcessor(core::EventBus &event_bus) : event_bus_(event_bus) {
+CmdProcessor::CmdProcessor(EventBus &event_bus, CmdHistory &history)
+    : history_(history), event_bus_(event_bus) {
   commands_["open"] = {2, "Open document with absolute path"};
-  commands_["reload"] = {1, "Reload current Document"};
+  commands_["reload"] = {1, "Reload current document"};
   commands_["close"] = {1, "Close current document"};
   commands_["quit"] = {1, "Quit app"};
-  // commands_["blist"] = {1, "Quit app"};
-  // commands_["badd"] = {1, "Quit app"};
-  // commands_["bdel"] = {1, "Quit app"};
+  commands_["bdelete"] = {2, "Delete bookmark"};
+  commands_["bmark"] = {2, "Set bookmark"};
+  commands_["blist"] = {1, "List bookmarks"};
+  commands_["bjump"] = {2, "Jump to bookmark"};
 
   for (const auto &[command, _] : commands_)
     autocomplete_.insert(command);
 
   event_bus_.subscribe<const char *>("cmdline.msg", [](const char *msg) {
-    throw std::runtime_error(msg);
+    std::println("Error: {}", msg);
   });
 }
 
@@ -29,10 +32,8 @@ void CmdProcessor::runCommand(const std::string &cmd) {
     return;
 
   std::istringstream iss(cmd);
-
   std::vector<std::string> argv;
   std::string arg;
-
   while (iss >> arg)
     argv.push_back(arg);
 
@@ -51,45 +52,43 @@ void CmdProcessor::runCommand(const std::string &cmd) {
         std::to_string(required_arg_count - 1)
     );
 
-  if (argv[0] == "open")
+  if (argv[0] == "open") {
     event_bus_.emit("cmd_processor.open_document", argv[1]);
-
+    history_.addFileHistory(argv[1]);
+  }
   if (argv[0] == "close")
     event_bus_.emit("cmd_processor.close_document", true);
-
   if (argv[0] == "reload")
     event_bus_.emit("cmd_processor.reload_document", true);
-
   if (argv[0] == "quit")
     event_bus_.emit("cmd_processor.quit", true);
 }
 
-std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const std::string &prefix) {
-  if (prefix.size() == 0) {
-    const auto &cmd_list = autocomplete_.complete("");
-    std::vector<std::pair<std::string, std::string>> completions;
-    for (const auto &cmd : cmd_list)
-      completions.emplace_back(cmd, commands_[cmd].second);
-    return completions;
-  }
-
-  std::istringstream iss(prefix);
-
+std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const std::string &input) {
+  std::istringstream iss(input);
   std::vector<std::string> argv;
   std::string arg;
-
   while (iss >> arg)
     argv.push_back(arg);
 
-  if (argv.size() > 1)
-    return {};
+  if (argv.empty() || (argv.size() == 1 && input.back() != ' ')) {
+    const std::string prefix = argv.empty() ? "" : argv[0];
+    std::vector<std::pair<std::string, std::string>> result;
+    for (const auto &cmd : autocomplete_.complete(prefix))
+      result.emplace_back(cmd, commands_[cmd].second);
+    return result;
+  }
 
-  const auto &cmd_list = autocomplete_.complete(argv[0]);
-  std::vector<std::pair<std::string, std::string>> completions;
-  for (const auto &cmd : cmd_list)
-    completions.emplace_back(cmd, commands_[cmd].second);
+  const std::string &cmd = argv[0];
 
-  return completions;
+  if (cmd == "open") {
+    std::vector<std::pair<std::string, std::string>> result;
+    for (const auto &file : history_.recentFiles())
+      result.emplace_back("open " + file, "");
+    return result;
+  }
+
+  return {};
 }
 
 } // namespace core

@@ -1,18 +1,46 @@
+#include "core/cmd_history.h"
+
+#include <algorithm>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 
-#include "core/cmd_history.h"
+namespace fs = std::filesystem;
 
 namespace core {
 
 CmdHistory::CmdHistory() {
-  std::ifstream file(history_file_path_);
+  const char *home = std::getenv("HOME");
+  if (!home)
+    home = ".";
 
-  if (!file.is_open())
-    return;
+  state_dir_ = std::string(home) + "/.local/state/vim-pdf-reader";
+  history_file_ = state_dir_ + "/history";
+  recent_files_file_ = state_dir_ + "/recent_files";
 
-  std::string line;
-  while (std::getline(file, line))
-    add(line);
+  fs::create_directories(state_dir_);
+
+  {
+    std::ifstream file(history_file_);
+
+    std::string line;
+    while (std::getline(file, line)) {
+      if (!line.empty())
+        history_.push_back(line);
+    }
+  }
+
+  {
+    std::ifstream file(recent_files_file_);
+
+    std::string line;
+    while (std::getline(file, line)) {
+      if (!line.empty())
+        recent_files_.push_back(line);
+    }
+  }
+
+  reset();
 }
 
 void CmdHistory::reset() {
@@ -29,7 +57,23 @@ void CmdHistory::add(const std::string &cmd) {
     history_.pop_front();
 
   reset();
-  save();
+  saveHistory();
+}
+
+void CmdHistory::addFileHistory(const std::string &path) {
+  if (path.empty())
+    return;
+
+  auto it = std::find(recent_files_.begin(), recent_files_.end(), path);
+  if (it != recent_files_.end())
+    recent_files_.erase(it);
+
+  recent_files_.push_front(path);
+
+  if (recent_files_.size() > max_size_)
+    recent_files_.pop_back();
+
+  saveRecentFiles();
 }
 
 std::string CmdHistory::getNext() {
@@ -37,7 +81,7 @@ std::string CmdHistory::getNext() {
     return "";
 
   if (curr_idx_ < history_.size())
-    curr_idx_++;
+    ++curr_idx_;
 
   if (curr_idx_ == history_.size())
     return "";
@@ -50,19 +94,33 @@ std::string CmdHistory::getPrevious() {
     return "";
 
   if (curr_idx_ > 0)
-    curr_idx_--;
+    --curr_idx_;
 
   return history_[curr_idx_];
 }
 
-void CmdHistory::save() {
-  std::ofstream file(history_file_path_, std::ios::trunc);
+std::vector<std::string> CmdHistory::recentFiles() const {
+  return {recent_files_.begin(), recent_files_.end()};
+}
+
+void CmdHistory::saveHistory() {
+  std::ofstream file(history_file_, std::ios::trunc);
 
   if (!file.is_open())
     return;
 
   for (const auto &cmd : history_)
     file << cmd << '\n';
+}
+
+void CmdHistory::saveRecentFiles() {
+  std::ofstream file(recent_files_file_, std::ios::trunc);
+
+  if (!file.is_open())
+    return;
+
+  for (const auto &path : recent_files_)
+    file << path << '\n';
 }
 
 } // namespace core
