@@ -1,4 +1,3 @@
-#include <print>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -21,10 +20,6 @@ CmdProcessor::CmdProcessor(EventBus &event_bus, CmdHistory &history)
 
   for (const auto &[command, _] : commands_)
     autocomplete_.insert(command);
-
-  event_bus_.subscribe<const char *>("cmdline.msg", [](const char *msg) {
-    std::println("Error: {}", msg);
-  });
 }
 
 void CmdProcessor::runCommand(const std::string &cmd) {
@@ -53,8 +48,12 @@ void CmdProcessor::runCommand(const std::string &cmd) {
     );
 
   if (argv[0] == "open") {
-    event_bus_.emit("cmd_processor.open_document", argv[1]);
-    history_.addFileHistory(argv[1]);
+    try {
+      event_bus_.emit("cmd_processor.open_document", argv[1]);
+      history_.addFileHistory(argv[1]);
+    } catch (const std::runtime_error &e) {
+      throw e;
+    }
   }
   if (argv[0] == "close")
     event_bus_.emit("cmd_processor.close_document", true);

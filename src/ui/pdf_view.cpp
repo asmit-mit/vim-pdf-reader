@@ -150,6 +150,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
   } catch (const std::runtime_error &e) {
     onCloseDocument();
+    throw e;
   }
 }
 
