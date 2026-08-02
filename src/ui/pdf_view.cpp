@@ -149,8 +149,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.total_pages", document_.size());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
   } catch (const std::runtime_error &e) {
-    has_document_ = false;
-    event_bus_.emit("cmdline.msg", e.what());
+    onCloseDocument();
   }
 }
 
