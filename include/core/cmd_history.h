@@ -11,6 +11,8 @@ public:
   CmdHistory();
 
   void reset();
+  void clearHistory();
+  void clearRecentfiles();
 
   void add(const std::string &cmd);
   void addFileHistory(const std::string &path);

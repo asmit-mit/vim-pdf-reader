@@ -43,6 +43,17 @@ CmdHistory::CmdHistory() {
   reset();
 }
 
+void CmdHistory::clearHistory() {
+  history_.clear();
+  reset();
+  saveHistory();
+}
+
+void CmdHistory::clearRecentfiles() {
+  recent_files_.clear();
+  saveRecentFiles();
+}
+
 void CmdHistory::reset() {
   curr_idx_ = history_.size();
 }

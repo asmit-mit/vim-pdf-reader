@@ -21,6 +21,7 @@ private:
   core::EventBus &event_bus_;
   utils::Trie autocomplete_;
 
+  std::vector<std::string> cmd_names_;
   std::unordered_map<std::string, std::pair<int, std::string>> commands_;
 };
 

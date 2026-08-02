@@ -12,11 +12,20 @@ CmdProcessor::CmdProcessor(EventBus &event_bus, CmdHistory &history)
   commands_["open"] = {2, "Open document with absolute path"};
   commands_["reload"] = {1, "Reload current document"};
   commands_["close"] = {1, "Close current document"};
+  commands_["clear"] = {2, "Clear history or recent files"};
   commands_["quit"] = {1, "Quit app"};
   commands_["bdelete"] = {2, "Delete bookmark"};
   commands_["bmark"] = {2, "Set bookmark"};
   commands_["blist"] = {1, "List bookmarks"};
   commands_["bjump"] = {2, "Jump to bookmark"};
+  commands_["one"] = {2, "Jump to bookmark"};
+  commands_["two"] = {2, "Jump to bookmark"};
+  commands_["three"] = {2, "Jump to bookmark"};
+  commands_["four"] = {2, "Jump to bookmark"};
+  commands_["five"] = {2, "Jump to bookmark"};
+  commands_["six"] = {2, "Jump to bookmark"};
+
+  cmd_names_ = {"open", "reload", "close", "clear", "quit", "bdelete", "bmark", "blist", "bjump"};
 
   for (const auto &[command, _] : commands_)
     autocomplete_.insert(command);
@@ -55,6 +64,12 @@ void CmdProcessor::runCommand(const std::string &cmd) {
       throw e;
     }
   }
+  if (argv[0] == "clear") {
+    if (argv[1] == "files")
+      history_.clearRecentfiles();
+    if (argv[1] == "history")
+      history_.clearHistory();
+  }
   if (argv[0] == "close")
     event_bus_.emit("cmd_processor.close_document", true);
   if (argv[0] == "reload")
@@ -70,7 +85,14 @@ std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const st
   while (iss >> arg)
     argv.push_back(arg);
 
-  if (argv.empty() || (argv.size() == 1 && input.back() != ' ')) {
+  if (argv.empty()) {
+    std::vector<std::pair<std::string, std::string>> result;
+    for (const auto &cmd : cmd_names_)
+      result.emplace_back(cmd, commands_[cmd].second);
+    return result;
+  }
+
+  if (argv.size() == 1 && input.back() != ' ') {
     const std::string prefix = argv.empty() ? "" : argv[0];
     std::vector<std::pair<std::string, std::string>> result;
     for (const auto &cmd : autocomplete_.complete(prefix))
@@ -84,6 +106,13 @@ std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const st
     std::vector<std::pair<std::string, std::string>> result;
     for (const auto &file : history_.recentFiles())
       result.emplace_back("open " + file, "");
+    return result;
+  }
+
+  if (cmd == "clear") {
+    std::vector<std::pair<std::string, std::string>> result(2);
+    result[0] = {"clear files", "Clear recent files"};
+    result[1] = {"clear history", "Clear command history"};
     return result;
   }
 
