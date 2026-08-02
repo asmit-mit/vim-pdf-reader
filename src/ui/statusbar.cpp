@@ -17,14 +17,14 @@ Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
 
   page_idx_ = 0;
   total_pages_ = 0;
-  cmdline_visible_ = false;
+  move_up_ = false;
   page_details_changed_ = false;
 
   curr_x_ = 0.f;
   curr_y_ = 0.f;
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
-    cmdline_visible_ = focus == ui::UIElements::Cmdline;
+    move_up_ = focus == ui::UIElements::Cmdline || focus == ui::UIElements::ErrorLine;
   });
 
   event_bus_.subscribe<std::string>("statusbar.pdf_path", [this](const std::string &filepath) {
@@ -65,7 +65,7 @@ void Statusbar::update() {
 
   float y = std::round(curr_y_);
 
-  if (cmdline_visible_)
+  if (move_up_)
     y = (y - height_) + 1.f;
 
   display_area_.setPosition({curr_x_, y});

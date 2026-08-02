@@ -19,31 +19,31 @@ Cmdline::Cmdline(
       font_(font_normal), label_(font_normal, ":", utils::char_size),
       textbox_(font_, utils::char_size, ":"),
       completions_(font_bold, font_italic, utils::char_size) {
-  state_ = CmdlineState::Hidden;
-  should_take_input_ = false;
-  ignore_next_text_entered_ = true;
+  visible_ = false;
+  ignore_next_text_entered_ = false;
 
-  curr_x_ = 0.f;
-  curr_y_ = 0.f;
   textbox_.setCursorSize({2.f, 24.f});
 
   label_.setFillColor(utils::hexToRGB(settings::fg_));
+  label_.setString(":");
+
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
-  display_area_.setSize({200.0, height_});
+  display_area_.setSize({200.0, utils::cmdline_height_});
 
   completions_.setCmdColor(utils::hexToRGB(settings::fg_));
   completions_.setDescColor(utils::hexToRGB(settings::completions_desc_fg_));
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
-    should_take_input_ = focus == ui::UIElements::Cmdline;
-    state_ = should_take_input_ ? CmdlineState::Edit : CmdlineState::Hidden;
+    visible_ = focus == ui::UIElements::Cmdline;
+    ignore_next_text_entered_ = visible_;
     textbox_.reset();
     textbox_.startEditing();
+    textbox_.show();
   });
 }
 
 void Cmdline::draw(sf::RenderTarget &window) const {
-  if (state_ == CmdlineState::Hidden)
+  if (!visible_)
     return;
 
   window.draw(display_area_);
@@ -53,31 +53,21 @@ void Cmdline::draw(sf::RenderTarget &window) const {
 }
 
 void Cmdline::update() {
-  if (state_ == CmdlineState::Hidden)
+  if (!visible_)
     return;
-
-  textbox_.show();
-  float round_y = std::round(curr_y_) + 1.f;
-
-  display_area_.setPosition({curr_x_, round_y});
-  label_.setPosition({utils::padding - 4.f, round_y});
-
-  if (state_ == CmdlineState::Status) {
-    label_.setString("");
-    textbox_.setPosition({utils::padding - 1.f, round_y});
-  } else {
-    label_.setString(":");
-    const auto bounds = label_.getGlobalBounds();
-    textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, round_y});
-  }
 
   completions_.update();
   textbox_.update();
 }
 
 void Cmdline::handleEvent(const sf::Event &event) {
-  if (!should_take_input_)
+  if (!visible_)
     return;
+
+  if (const auto *te = event.getIf<sf::Event::TextEntered>()) {
+    if (te->unicode == '\t')
+      return;
+  }
 
   if (ignore_next_text_entered_) {
     if (event.is<sf::Event::TextEntered>()) {
@@ -88,95 +78,83 @@ void Cmdline::handleEvent(const sf::Event &event) {
 
   const auto *key = event.getIf<sf::Event::KeyPressed>();
 
-  if (key) {
-    if (state_ == CmdlineState::Status) {
-      textbox_.stopEditing();
-
-      if (key->code == sf::Keyboard::Key::Semicolon && key->shift) {
-        state_ = CmdlineState::Edit;
-        textbox_.reset();
-        textbox_.startEditing();
-        ignore_next_text_entered_ = true;
-      } else if (key->code == sf::Keyboard::Key::Escape) {
-        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
-        cmd_history_.reset();
-        textbox_.reset();
-        textbox_.stopEditing();
-        textbox_.hide();
-        completions_.clear();
-        completions_.hide();
-      }
-
-      return;
-    }
-
-    if (state_ == CmdlineState::Edit) {
-      textbox_.startEditing();
-
-      if (key->code == sf::Keyboard::Key::Escape) {
-        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
-        cmd_history_.reset();
-        textbox_.reset();
-        textbox_.stopEditing();
-        textbox_.hide();
-        completions_.clear();
-        completions_.hide();
-      } else if (key->code == sf::Keyboard::Key::Enter) {
-        if (completions_.isVisible()) {
-          textbox_.setText(completions_.getSelectedText());
-        } else {
-          cmd_history_.add(textbox_.getText());
-          try {
-            cmd_processor_.runCommand(textbox_.getText());
-            textbox_.reset();
-            textbox_.stopEditing();
-            event_bus_.emit("ui.focus", ui::UIElements::PDFView);
-            ignore_next_text_entered_ = true;
-          } catch (const std::runtime_error &e) {
-            state_ = CmdlineState::Status;
-            textbox_.setText(std::string(e.what()));
-            textbox_.stopEditing();
-          }
-        }
-        completions_.clear();
-        completions_.hide();
-      } else if (key->code == sf::Keyboard::Key::P && key->control) {
-        textbox_.setText(cmd_history_.getPrevious());
-      } else if (key->code == sf::Keyboard::Key::N && key->control) {
-        textbox_.setText(cmd_history_.getNext());
-      } else if (key->code == sf::Keyboard::Key::Tab) {
-        if (!completions_.isVisible())
-          refreshCompletions();
-        else {
-          if (key->shift) {
-            completions_.moveUp();
-            return;
-          }
-
-          if (string_at_last_tab_ == textbox_.getText())
-            completions_.moveDown();
-          else {
-            refreshCompletions();
-            string_at_last_tab_ = textbox_.getText();
-          }
-        }
-      }
+  if (completions_.isVisible()) {
+    bool is_edit = event.is<sf::Event::TextEntered>();
+    if (!is_edit && key)
+      is_edit = key->code == sf::Keyboard::Key::Backspace || key->code == sf::Keyboard::Key::Delete;
+    if (is_edit) {
+      completions_.clear();
+      completions_.hide();
     }
   }
 
-  if (state_ == CmdlineState::Edit)
-    textbox_.handleEvent(event);
+  if (key) {
+    if (key->code == sf::Keyboard::Key::Escape) {
+      if (completions_.isVisible()) {
+        completions_.clear();
+        completions_.hide();
+        textbox_.setText(original_string_);
+        return;
+      }
+      event_bus_.emit("ui.focus", ui::UIElements::PDFView);
+      cmd_history_.reset();
+    } else if (key->code == sf::Keyboard::Key::Enter) {
+      cmd_history_.add(textbox_.getText());
+      try {
+        cmd_processor_.runCommand(textbox_.getText());
+      } catch (const std::runtime_error &e) {
+        event_bus_.emit("cmdline.msg", e.what());
+      }
+      event_bus_.emit("ui.focus", ui::UIElements::ErrorLine);
+      reset();
+    } else if (key->code == sf::Keyboard::Key::P && key->control) {
+      textbox_.setText(cmd_history_.getPrevious());
+    } else if (key->code == sf::Keyboard::Key::N && key->control) {
+      textbox_.setText(cmd_history_.getNext());
+    } else if (key->code == sf::Keyboard::Key::Tab) {
+      if (!completions_.isVisible()) {
+        original_string_ = textbox_.getText();
+        refreshCompletions();
+      } else {
+        if (key->shift)
+          completions_.moveUp();
+        else
+          completions_.moveDown();
+        textbox_.setText(completions_.getSelectedText());
+      }
+      return;
+    }
+  }
+
+  textbox_.handleEvent(event);
 }
 
 void Cmdline::onResize(const sf::Vector2f &size) {
-  curr_x_ = 0.f;
-  curr_y_ = size.y - height_;
-  display_area_.setSize({size.x, height_});
+  window_size_ = size;
+  display_area_.setSize({size.x, utils::cmdline_height_});
   completions_.onResize(size);
+
+  const float curr_x_ = 0.f;
+  const float curr_y_ = window_size_.y - utils::cmdline_height_;
+  float round_y = std::round(curr_y_) + 1.f;
+
+  display_area_.setPosition({curr_x_, round_y});
+  label_.setPosition({utils::padding - 4.f, round_y});
+
+  const auto bounds = label_.getGlobalBounds();
+  textbox_.setPosition({bounds.position.x + bounds.size.x + 3.f, round_y});
+}
+
+void Cmdline::reset() {
+  textbox_.reset();
+  textbox_.stopEditing();
+  textbox_.hide();
+  completions_.clear();
+  completions_.hide();
 }
 
 void Cmdline::refreshCompletions() {
-  const auto &list = cmd_processor_.complete(textbox_.getText());
+  const auto &list = cmd_processor_.complete(original_string_);
 
   if (list.empty()) {
     completions_.clear();
@@ -193,6 +171,7 @@ void Cmdline::refreshCompletions() {
 
   completions_.setCompletionList(list);
   completions_.show();
+  textbox_.setText(completions_.getSelectedText());
 }
 
 } // namespace ui

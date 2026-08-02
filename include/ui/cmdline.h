@@ -27,14 +27,8 @@ public:
   void onResize(const sf::Vector2f &size);
 
 private:
+  void reset();
   void refreshCompletions();
-
-private:
-  enum class CmdlineState {
-    Status,
-    Edit,
-    Hidden,
-  };
 
 private:
   core::EventBus &event_bus_;
@@ -46,13 +40,12 @@ private:
   ui::Textbox textbox_;
   ui::Completions completions_;
   sf::RectangleShape display_area_;
-  CmdlineState state_;
 
-  std::string string_at_last_tab_;
+  sf::Vector2f window_size_;
+  std::string original_string_;
+
+  bool visible_;
   bool ignore_next_text_entered_;
-  bool should_take_input_;
-  float curr_x_, curr_y_;
-  static constexpr float height_ = 24.0;
 };
 
 } // namespace ui
