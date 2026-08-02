@@ -65,20 +65,21 @@ void Completions::update() {
     display_desc_list_[row].setFillColor(desc_fg_color_);
   }
 
+  const std::size_t selected_row = selected_ - first_visible_;
   selected_cmd_area_.setPosition(
-      {utils::padding - 2.f, display_cmd_list_[selected_].getPosition().y}
+      {utils::padding - 2.f, display_cmd_list_[selected_row].getPosition().y}
   );
   selected_cmd_area_.setSize(
-      {display_cmd_list_[selected_].getGlobalBounds().size.x + 6.f, utils::cmdline_height_}
+      {display_cmd_list_[selected_row].getGlobalBounds().size.x + 6.f, utils::cmdline_height_}
   );
 
   selected_desc_area_.setPosition(
-      {window_size_.x - display_desc_list_[selected_].getGlobalBounds().size.x - utils::padding -
+      {window_size_.x - display_desc_list_[selected_row].getGlobalBounds().size.x - utils::padding -
            4.f,
-       display_desc_list_[selected_].getPosition().y}
+       display_desc_list_[selected_row].getPosition().y}
   );
   selected_desc_area_.setSize(
-      {display_desc_list_[selected_].getGlobalBounds().size.x + utils::padding,
+      {display_desc_list_[selected_row].getGlobalBounds().size.x + utils::padding,
        utils::cmdline_height_}
   );
 }
