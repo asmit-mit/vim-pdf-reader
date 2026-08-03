@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "core/cmd_history.h"
+#include "core/history_saver.h"
 #include "core/event_bus.h"
 #include "utils/trie.h"
 
@@ -10,13 +10,15 @@ namespace core {
 
 class CmdProcessor {
 public:
-  CmdProcessor(EventBus &event_bus, CmdHistory &history);
+  CmdProcessor(EventBus &event_bus, HistorySaver &cmd_history, HistorySaver &search_history, HistorySaver &file_history);
 
   void runCommand(const std::string &cmd);
   std::vector<std::pair<std::string, std::string>> complete(const std::string &prefix);
 
 private:
-  CmdHistory &history_;
+  HistorySaver &cmd_history_;
+  HistorySaver &search_history_;
+  HistorySaver &file_history_;
 
   core::EventBus &event_bus_;
   utils::Trie autocomplete_;

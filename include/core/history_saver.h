@@ -6,36 +6,30 @@
 
 namespace core {
 
-class CmdHistory {
+class HistorySaver {
 public:
-  CmdHistory();
+  HistorySaver();
 
+  void setPath(const std::string &path);
   void reset();
-  void clearHistory();
-  void clearRecentfiles();
+  void clear();
 
   void add(const std::string &cmd);
-  void addFileHistory(const std::string &path);
 
   std::string getNext();
   std::string getPrevious();
-
-  std::vector<std::string> recentFiles() const;
+  std::vector<std::string> getAll() const;
 
 private:
-  void saveHistory();
-  void saveRecentFiles();
+  void save();
 
 private:
   std::deque<std::string> history_;
-  std::deque<std::string> recent_files_;
 
   static constexpr std::size_t max_size_ = 100;
   std::size_t curr_idx_ = 0;
 
-  std::string state_dir_;
   std::string history_file_;
-  std::string recent_files_file_;
 };
 
 } // namespace core

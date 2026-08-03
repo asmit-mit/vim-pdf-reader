@@ -4,14 +4,27 @@
 #include "utils/settings.h"
 #include "utils/utils.h"
 
+#include <filesystem>
+
 App::App()
     : font_normal_(settings::font_normal_), font_bold_(settings::font_bold_),
       font_italic_(settings::font_italic_), document_(), renderer_(),
-      cmd_processor_(event_bus_, cmd_history_),
+      cmd_processor_(event_bus_, cmd_history_, search_history_, file_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
-      cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_),
+      cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_, search_history_),
       statusbar_(font_normal_, event_bus_), pdf_view_(document_, render_scheduler_, event_bus_),
       error_line_(font_normal_, event_bus_) {
+  const char *home = std::getenv("HOME");
+  if (!home)
+    home = ".";
+
+  std::string state_dir_ = std::string(home) + "/.local/state/vim-pdf-reader";
+  std::filesystem::create_directory(state_dir_);
+
+  cmd_history_.setPath(state_dir_ + "/cmd_history");
+  search_history_.setPath(state_dir_ + "/search_history");
+  file_history_.setPath(state_dir_ + "/recent_files");
+
   sf::ContextSettings settings;
   settings.antiAliasingLevel = 8;
 
@@ -82,8 +95,17 @@ void App::processEvents() {
     if (focus_ == ui::UIElements::PDFView) {
       if (const auto *key = event->getIf<sf::Event::KeyPressed>()) {
         if (key->code == sf::Keyboard::Key::Semicolon && key->shift &&
-            focus_ != ui::UIElements::Cmdline)
+            focus_ != ui::UIElements::Cmdline) {
           event_bus_.emit("ui.focus", ui::UIElements::Cmdline);
+          cmdline_.setMode(ui::CmdlineMode::Cmd);
+        }
+        if (key->code == sf::Keyboard::Key::Slash && focus_ != ui::UIElements::Cmdline) {
+          event_bus_.emit("ui.focus", ui::UIElements::Cmdline);
+          if (key->shift)
+            cmdline_.setMode(ui::CmdlineMode::BackwardSearch);
+          else
+            cmdline_.setMode(ui::CmdlineMode::ForwardSearch);
+        }
       }
     }
 

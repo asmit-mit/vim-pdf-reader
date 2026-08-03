@@ -44,14 +44,15 @@ void PDFDocument::openDocument(const std::string &filepath) {
   for (int i = 0; i < page_count; i++) {
     fz_page *page = fz_load_page(ctx_, doc_, i);
     fz_rect bounds = fz_bound_page(ctx_, page);
-    int width = std::abs(bounds.x0 - bounds.x1);
+    fz_stext_page *text = fz_new_stext_page_from_page(ctx_, page, NULL);
 
+    int width = std::abs(bounds.x0 - bounds.x1);
     if (width > max_width) {
       page_with_max_width_ = i;
       max_width = width;
     }
 
-    pages_.emplace_back(i, bounds);
+    pages_.emplace_back(ctx_, i, bounds, text);
   }
 }
 

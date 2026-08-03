@@ -1,13 +1,19 @@
 #pragma once
 
-#include "core/cmd_history.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
+#include "core/history_saver.h"
 #include "ui/completions.h"
 #include "ui/textbox.h"
 #include "ui/widget.h"
 
 namespace ui {
+
+enum class CmdlineMode {
+  Cmd = 0,
+  ForwardSearch,
+  BackwardSearch,
+};
 
 class Cmdline : public Widget {
 public:
@@ -17,13 +23,15 @@ public:
       const sf::Font &font_italic,
       core::EventBus &event_bus,
       core::CmdProcessor &cmd_processor,
-      core::CmdHistory &cmd_history
+      core::HistorySaver &cmd_history,
+      core::HistorySaver &search_history
   );
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
   void handleEvent(const sf::Event &event) override;
 
+  void setMode(CmdlineMode mode);
   void onResize(const sf::Vector2f &size);
 
 private:
@@ -33,7 +41,8 @@ private:
 private:
   core::EventBus &event_bus_;
   core::CmdProcessor &cmd_processor_;
-  core::CmdHistory &cmd_history_;
+  core::HistorySaver &cmd_history_;
+  core::HistorySaver &search_history_;
   const sf::Font &font_;
 
   sf::Text label_;
@@ -43,6 +52,8 @@ private:
 
   sf::Vector2f window_size_;
   std::string original_string_;
+
+  CmdlineMode mode_;
 
   bool visible_;
   bool ignore_next_text_entered_;

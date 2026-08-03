@@ -1,3 +1,4 @@
+#include <print>
 #include <stdexcept>
 
 #include "ui/cmdline.h"
@@ -13,11 +14,12 @@ Cmdline::Cmdline(
     const sf::Font &font_italic,
     core::EventBus &event_bus,
     core::CmdProcessor &cmd_processor,
-    core::CmdHistory &cmd_history
+    core::HistorySaver &cmd_history,
+    core::HistorySaver &search_history
 )
     : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history),
-      font_(font_normal), label_(font_normal, ":", utils::char_size),
-      textbox_(font_, utils::char_size, ":"),
+      search_history_(search_history), font_(font_normal),
+      label_(font_normal, ":", utils::char_size), textbox_(font_, utils::char_size, ":"),
       completions_(font_bold, font_italic, utils::char_size) {
   visible_ = false;
   ignore_next_text_entered_ = false;
@@ -25,7 +27,6 @@ Cmdline::Cmdline(
   textbox_.setCursorSize({2.f, 24.f});
 
   label_.setFillColor(utils::hexToRGB(settings::fg_));
-  label_.setString(":");
 
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
   display_area_.setSize({200.0, utils::cmdline_height_});
@@ -36,9 +37,11 @@ Cmdline::Cmdline(
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     visible_ = focus == ui::UIElements::Cmdline;
     ignore_next_text_entered_ = visible_;
-    textbox_.reset();
-    textbox_.startEditing();
-    textbox_.show();
+    if (visible_) {
+      textbox_.reset();
+      textbox_.startEditing();
+      textbox_.show();
+    }
   });
 }
 
@@ -78,55 +81,96 @@ void Cmdline::handleEvent(const sf::Event &event) {
 
   const auto *key = event.getIf<sf::Event::KeyPressed>();
 
-  if (completions_.isVisible()) {
-    bool is_edit = event.is<sf::Event::TextEntered>();
-    if (!is_edit && key)
-      is_edit = key->code == sf::Keyboard::Key::Backspace || key->code == sf::Keyboard::Key::Delete;
-    if (is_edit) {
-      completions_.clear();
-      completions_.hide();
-    }
-  }
-
-  if (key) {
-    if (key->code == sf::Keyboard::Key::Escape) {
-      if (completions_.isVisible()) {
+  if (mode_ == CmdlineMode::Cmd) {
+    if (completions_.isVisible()) {
+      bool is_edit = event.is<sf::Event::TextEntered>();
+      if (!is_edit && key)
+        is_edit = key->code == sf::Keyboard::Key::Backspace ||
+                  key->code == sf::Keyboard::Key::Delete;
+      if (is_edit) {
         completions_.clear();
         completions_.hide();
-        textbox_.setText(original_string_);
+      }
+    }
+
+    if (key) {
+      if (key->code == sf::Keyboard::Key::Escape) {
+        if (completions_.isVisible()) {
+          completions_.clear();
+          completions_.hide();
+          textbox_.setText(original_string_);
+          return;
+        }
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
+        cmd_history_.reset();
+      } else if (key->code == sf::Keyboard::Key::Enter) {
+        cmd_history_.add(textbox_.getText());
+        try {
+          cmd_processor_.runCommand(textbox_.getText());
+        } catch (const std::runtime_error &e) {
+          event_bus_.emit("cmdline.msg", e.what());
+        }
+        event_bus_.emit("ui.focus", ui::UIElements::ErrorLine);
+        reset();
+      } else if (key->code == sf::Keyboard::Key::P && key->control) {
+        textbox_.setText(cmd_history_.getPrevious());
+      } else if (key->code == sf::Keyboard::Key::N && key->control) {
+        textbox_.setText(cmd_history_.getNext());
+      } else if (key->code == sf::Keyboard::Key::Tab) {
+        if (!completions_.isVisible()) {
+          original_string_ = textbox_.getText();
+          refreshCompletions();
+        } else {
+          if (key->shift)
+            completions_.moveUp();
+          else
+            completions_.moveDown();
+          textbox_.setText(completions_.getSelectedText());
+        }
         return;
       }
-      event_bus_.emit("ui.focus", ui::UIElements::PDFView);
-      cmd_history_.reset();
-    } else if (key->code == sf::Keyboard::Key::Enter) {
-      cmd_history_.add(textbox_.getText());
-      try {
-        cmd_processor_.runCommand(textbox_.getText());
-      } catch (const std::runtime_error &e) {
-        event_bus_.emit("cmdline.msg", e.what());
+    }
+  } else {
+    if (key) {
+      if (key->code == sf::Keyboard::Key::Escape) {
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
+      } else if (key->code == sf::Keyboard::Key::Enter) {
+        std::println("Text to search for: {}", textbox_.getText());
+        search_history_.add(textbox_.getText());
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
+      } else if (key->code == sf::Keyboard::Key::P && key->control) {
+        textbox_.setText(search_history_.getPrevious());
+      } else if (key->code == sf::Keyboard::Key::N && key->control) {
+        textbox_.setText(search_history_.getNext());
+      } else if (key->code == sf::Keyboard::Key::N) {
+        if (key->shift) {
+          if (mode_ == CmdlineMode::ForwardSearch) {
+            // search backwrad
+          } else {
+            // search forward
+          }
+        } else {
+          if (mode_ == CmdlineMode::ForwardSearch) {
+            // search forward
+          } else {
+            // search backward
+          }
+        }
       }
-      event_bus_.emit("ui.focus", ui::UIElements::ErrorLine);
-      reset();
-    } else if (key->code == sf::Keyboard::Key::P && key->control) {
-      textbox_.setText(cmd_history_.getPrevious());
-    } else if (key->code == sf::Keyboard::Key::N && key->control) {
-      textbox_.setText(cmd_history_.getNext());
-    } else if (key->code == sf::Keyboard::Key::Tab) {
-      if (!completions_.isVisible()) {
-        original_string_ = textbox_.getText();
-        refreshCompletions();
-      } else {
-        if (key->shift)
-          completions_.moveUp();
-        else
-          completions_.moveDown();
-        textbox_.setText(completions_.getSelectedText());
-      }
-      return;
     }
   }
 
   textbox_.handleEvent(event);
+}
+
+void Cmdline::setMode(CmdlineMode mode) {
+  mode_ = mode;
+  if (mode_ == CmdlineMode::Cmd)
+    label_.setString(":");
+  else if (mode_ == CmdlineMode::ForwardSearch)
+    label_.setString("/");
+  else if (mode_ == CmdlineMode::BackwardSearch)
+    label_.setString("?");
 }
 
 void Cmdline::onResize(const sf::Vector2f &size) {

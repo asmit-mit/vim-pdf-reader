@@ -9,10 +9,11 @@ includes = include_directories('include')
 sources = files(
   'src/app.cpp',
   'src/core/cmd_processor.cpp',
-  'src/core/cmd_history.cpp',
+  'src/core/history_saver.cpp',
   'src/core/render_scheduler.cpp',
   'src/main.cpp',
   'src/pdf/pdf_document.cpp',
+  'src/pdf/pdf_page.cpp',
   'src/pdf/pdf_renderer.cpp',
   'src/ui/cmdline.cpp',
   'src/ui/error_line.cpp',
