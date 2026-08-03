@@ -6,11 +6,10 @@
 namespace ui {
 
 ErrorLine::ErrorLine(const sf::Font &font_normal, core::EventBus &event_bus)
-    : event_bus_(event_bus), font_(font_normal), textbox_(font_, utils::char_size, ":") {
+    : event_bus_(event_bus), font_(font_normal), textbox_(font_, ":", utils::char_size) {
   visible_ = false;
 
-  textbox_.setCursorSize({2.f, 24.f});
-
+  textbox_.setFillColor(utils::hexToRGB(settings::fg_));
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
   display_area_.setSize({200.0, utils::cmdline_height_});
 
@@ -21,9 +20,7 @@ ErrorLine::ErrorLine(const sf::Font &font_normal, core::EventBus &event_bus)
 
   event_bus_.subscribe<const char *>("cmdline.msg", [this](const char *msg) {
     visible_ = true;
-    textbox_.reset();
-    textbox_.show();
-    textbox_.setText(msg);
+    textbox_.setString(msg);
   });
 }
 
@@ -32,14 +29,7 @@ void ErrorLine::draw(sf::RenderTarget &window) const {
     return;
 
   window.draw(display_area_);
-  textbox_.draw(window);
-}
-
-void ErrorLine::update() {
-  if (!visible_)
-    return;
-
-  textbox_.update();
+  window.draw(textbox_);
 }
 
 void ErrorLine::handleEvent(const sf::Event &event) {
