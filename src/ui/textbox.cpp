@@ -1,7 +1,6 @@
 #include "ui/textbox.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
-#include <iostream>
 
 namespace ui {
 
@@ -137,6 +136,7 @@ void Textbox::handleEvent(const sf::Event &event) {
         ctrlArrowLeft();
       } else {
         setCursorPosition(selection_.caret - 1);
+        clearSelection();
       }
       break;
 
@@ -155,6 +155,7 @@ void Textbox::handleEvent(const sf::Event &event) {
         ctrlArrowRight();
       } else {
         setCursorPosition(selection_.caret + 1);
+        clearSelection();
       }
       break;
 
