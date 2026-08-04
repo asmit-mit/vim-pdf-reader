@@ -25,6 +25,8 @@ App::App()
   search_history_.setPath(state_dir_ + "/search_history");
   file_history_.setPath(state_dir_ + "/recent_files");
 
+  search_history_.setSaveUnique(true);
+
   sf::ContextSettings settings;
   settings.antiAliasingLevel = 8;
 
