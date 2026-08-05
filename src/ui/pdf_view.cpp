@@ -120,6 +120,20 @@ void PDFView::handleEvent(const sf::Event &event) {
         setRotate((target_state_.rotate - 1) % 4);
       else
         setRotate((target_state_.rotate + 1) % 4);
+    } else if (key->code == sf::Keyboard::Key::F) {
+      pdf::PDFRenderKey base_key{anchor_page_, 1.f, target_state_.rotate};
+      const auto page_dims = scheduler_.getPageSize(base_key);
+      if (page_dims.x > 0 && page_dims.y > 0) {
+        const float viewable_h = window_size_.y - utils::cmdline_height_;
+        const float zoom_x = window_size_.x / static_cast<float>(page_dims.x);
+        const float zoom_y = viewable_h / static_cast<float>(page_dims.y);
+        setZoom(std::min(zoom_x, zoom_y));
+      }
+    } else if (key->code == sf::Keyboard::Key::W) {
+      pdf::PDFRenderKey base_key{anchor_page_, 1.f, target_state_.rotate};
+      const auto page_dims = scheduler_.getPageSize(base_key);
+      if (page_dims.x > 0)
+        setZoom(window_size_.x / static_cast<float>(page_dims.x));
     }
   }
 }
@@ -193,8 +207,8 @@ void PDFView::setInitialPagePos() {
 
   float x = window_size_.x * 0.5f;
   float y = size.y * 0.5f;
-  if (size.y <= window_size_.y)
-    y = window_size_.y * 0.5f - utils::cmdline_height_;
+  if (size.y <= (window_size_.y - utils::cmdline_height_))
+    y = (window_size_.y - utils::cmdline_height_) * 0.5;
 
   pages_[anchor_page_].setPosition({x, y});
   need_initial_pos_ = false;
