@@ -2,7 +2,9 @@
 
 namespace ui {
 
-PageView::PageView(const sf::Texture &dummy) : sprite_(dummy) {};
+PageView::PageView(const sf::Texture &dummy) : sprite_(dummy) {
+  active_ = false;
+};
 
 void PageView::draw(sf::RenderTarget &window) const {
   window.draw(sprite_);

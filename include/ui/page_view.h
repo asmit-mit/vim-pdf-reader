@@ -37,7 +37,7 @@ private:
   sf::Sprite sprite_;
   pdf::PDFRenderKey key_;
 
-  bool active_ = false;
+  bool active_;
 };
 
 } // namespace ui

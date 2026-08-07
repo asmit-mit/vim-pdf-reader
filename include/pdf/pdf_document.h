@@ -26,6 +26,10 @@ public:
   void closeDocument();
   PDFPage &getPage(std::size_t page_idx);
 
+  bool isAllContentLoaded();
+  void loadAllContent();
+  void loadPageContent(std::size_t idx);
+
   std::size_t pageWithMaxWidth() const;
   std::size_t size() const;
 
@@ -45,6 +49,7 @@ private:
 
   fz_context *ctx_;
   fz_document *doc_;
+  bool all_content_loaded_;
 };
 
 } // namespace pdf

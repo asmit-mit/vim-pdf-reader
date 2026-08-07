@@ -9,6 +9,8 @@ PDFDocument::PDFDocument() {
   locks_.lock = &PDFDocument::lockMutex;
   locks_.unlock = &PDFDocument::unlockMutex;
 
+  all_content_loaded_ = false;
+
   ctx_ = fz_new_context(nullptr, &locks_, FZ_STORE_DEFAULT);
   if (!ctx_)
     throw std::runtime_error("Failed to create MuPDF context");
@@ -44,7 +46,6 @@ void PDFDocument::openDocument(const std::string &filepath) {
   for (int i = 0; i < page_count; i++) {
     fz_page *page = fz_load_page(ctx_, doc_, i);
     fz_rect bounds = fz_bound_page(ctx_, page);
-    fz_stext_page *text = fz_new_stext_page_from_page(ctx_, page, NULL);
 
     int width = std::abs(bounds.x0 - bounds.x1);
     if (width > max_width) {
@@ -52,7 +53,7 @@ void PDFDocument::openDocument(const std::string &filepath) {
       max_width = width;
     }
 
-    pages_.emplace_back(ctx_, i, bounds, text);
+    pages_.emplace_back(i, bounds);
   }
 }
 
@@ -73,6 +74,25 @@ std::size_t PDFDocument::pageWithMaxWidth() const {
 
 PDFPage &PDFDocument::getPage(std::size_t page_idx) {
   return pages_[page_idx];
+}
+
+bool PDFDocument::isAllContentLoaded() {
+  return all_content_loaded_;
+}
+
+void PDFDocument::loadAllContent() {
+  for (int i = 0; i < pages_.size(); i++)
+    loadPageContent(i);
+}
+
+void PDFDocument::loadPageContent(std::size_t idx) {
+  fz_stext_page *text = nullptr;
+  fz_try(ctx_) {
+    text = fz_new_stext_page_from_page_number(ctx_, doc_, idx, nullptr);
+    pages_[idx].loadContent(text);
+  }
+  fz_always(ctx_) fz_drop_stext_page(ctx_, text);
+  fz_catch(ctx_) throw std::runtime_error("Failed to load text from page");
 }
 
 std::size_t PDFDocument::size() const {
