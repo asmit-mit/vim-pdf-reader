@@ -12,8 +12,8 @@ App::App()
       cmd_processor_(event_bus_, cmd_history_, search_history_, file_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
       cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_, search_history_),
-      statusbar_(font_normal_, event_bus_), pdf_view_(document_, render_scheduler_, event_bus_),
-      error_line_(font_normal_, event_bus_) {
+      pdf_view_(document_, render_scheduler_, event_bus_), statusbar_(font_normal_, event_bus_),
+      notifications_(font_normal_, font_bold_, notification_history_, event_bus_) {
   const char *home = std::getenv("HOME");
   if (!home)
     home = ".";
@@ -50,8 +50,6 @@ App::App()
   });
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
-    if (focus == ui::UIElements::ErrorLine && focus_ == ui::UIElements::PDFView)
-      return;
     focus_ = focus;
   });
 }
@@ -60,10 +58,11 @@ void App::run() {
   while (window_.isOpen()) {
     processEvents();
 
+    event_bus_.update();
     pdf_view_.update();
     cmdline_.update();
     statusbar_.update();
-    error_line_.update();
+    notifications_.update();
 
     window_.clear(utils::hexToRGB(settings::bg_));
     window_.setView(view_);
@@ -71,7 +70,7 @@ void App::run() {
     pdf_view_.draw(window_);
     cmdline_.draw(window_);
     statusbar_.draw(window_);
-    error_line_.draw(window_);
+    notifications_.draw(window_);
 
     window_.display();
   }
@@ -91,7 +90,7 @@ void App::processEvents() {
       cmdline_.onResize(view_.getSize());
       statusbar_.onResize(view_.getSize());
       pdf_view_.onResize(view_.getSize());
-      error_line_.onResize(view_.getSize());
+      notifications_.onResize(view_.getSize());
     }
 
     if (focus_ == ui::UIElements::PDFView) {
@@ -114,6 +113,6 @@ void App::processEvents() {
     cmdline_.handleEvent(*event);
     statusbar_.handleEvent(*event);
     pdf_view_.handleEvent(*event);
-    error_line_.handleEvent(*event);
+    notifications_.handleEvent(*event);
   }
 }

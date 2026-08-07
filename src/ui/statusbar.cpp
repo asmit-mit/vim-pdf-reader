@@ -24,7 +24,7 @@ Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
   curr_y_ = 0.f;
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
-    move_up_ = focus == ui::UIElements::Cmdline || focus == ui::UIElements::ErrorLine;
+    move_up_ = focus == ui::UIElements::Cmdline;
   });
 
   event_bus_.subscribe<std::string>("statusbar.pdf_path", [this](const std::string &filepath) {

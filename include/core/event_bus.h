@@ -1,7 +1,8 @@
 #pragma once
-
 #include <any>
 #include <functional>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
@@ -20,25 +21,47 @@ public:
   }
 
   template <typename Event> void emit(const std::string &topic, const Event &event) {
-    auto topic_it = listeners_.find(topic);
-    if (topic_it == listeners_.end())
-      return;
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    queue_.push({topic, typeid(Event), std::any(event)});
+  }
 
-    auto type_it = topic_it->second.find(typeid(Event));
-    if (type_it == topic_it->second.end())
-      return;
+  void update() {
+    std::queue<Entry> current;
+    {
+      std::lock_guard<std::mutex> lock(queue_mutex_);
+      std::swap(current, queue_);
+    }
 
-    std::any e = event;
+    while (!current.empty()) {
+      auto &[topic, type, payload] = current.front();
 
-    for (auto &listener : type_it->second)
-      listener(e);
+      auto topic_it = listeners_.find(topic);
+      if (topic_it != listeners_.end()) {
+        auto type_it = topic_it->second.find(type);
+        if (type_it != topic_it->second.end()) {
+          for (auto &listener : type_it->second)
+            listener(payload);
+        }
+      }
+
+      current.pop();
+    }
   }
 
 private:
   using Listener = std::function<void(const std::any &)>;
 
+  struct Entry {
+    std::string topic;
+    std::type_index type;
+    std::any payload;
+  };
+
   std::unordered_map<std::string, std::unordered_map<std::type_index, std::vector<Listener>>>
       listeners_;
+
+  std::queue<Entry> queue_;
+  std::mutex queue_mutex_;
 };
 
 } // namespace core

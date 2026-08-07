@@ -2,7 +2,7 @@
 
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
-#include "core/history_saver.h"
+#include "core/history_manager.h"
 #include "ui/completions.h"
 #include "ui/textbox.h"
 #include "ui/widget.h"
@@ -23,8 +23,8 @@ public:
       const sf::Font &font_italic,
       core::EventBus &event_bus,
       core::CmdProcessor &cmd_processor,
-      core::HistorySaver &cmd_history,
-      core::HistorySaver &search_history
+      core::HistoryManager &cmd_history,
+      core::HistoryManager &search_history
   );
 
   void draw(sf::RenderTarget &window) const override;
@@ -41,8 +41,8 @@ private:
 private:
   core::EventBus &event_bus_;
   core::CmdProcessor &cmd_processor_;
-  core::HistorySaver &cmd_history_;
-  core::HistorySaver &search_history_;
+  core::HistoryManager &cmd_history_;
+  core::HistoryManager &search_history_;
   const sf::Font &font_;
 
   sf::Text label_;

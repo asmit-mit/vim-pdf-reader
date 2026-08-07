@@ -14,8 +14,8 @@ Cmdline::Cmdline(
     const sf::Font &font_italic,
     core::EventBus &event_bus,
     core::CmdProcessor &cmd_processor,
-    core::HistorySaver &cmd_history,
-    core::HistorySaver &search_history
+    core::HistoryManager &cmd_history,
+    core::HistoryManager &search_history
 )
     : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history),
       search_history_(search_history), font_(font_normal),
@@ -108,9 +108,9 @@ void Cmdline::handleEvent(const sf::Event &event) {
         try {
           cmd_processor_.runCommand(textbox_.getText());
         } catch (const std::runtime_error &e) {
-          event_bus_.emit("cmdline.msg", e.what());
+          event_bus_.emit("notification.msg", e.what());
         }
-        event_bus_.emit("ui.focus", ui::UIElements::ErrorLine);
+        event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         reset();
       } else if (key->code == sf::Keyboard::Key::P && key->control) {
         textbox_.setText(cmd_history_.getPrevious());

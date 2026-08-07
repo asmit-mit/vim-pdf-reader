@@ -7,9 +7,9 @@
 
 namespace core {
 
-class HistorySaver {
+class HistoryManager {
 public:
-  HistorySaver();
+  HistoryManager();
 
   void setSaveUnique(bool unique);
   void setPath(const std::string &path);
@@ -20,6 +20,8 @@ public:
 
   std::string getNext();
   std::string getPrevious();
+
+  std::vector<std::string> getAll() const;
   std::vector<std::string> getAllUnique() const;
 
 private:
@@ -34,6 +36,7 @@ private:
 
   std::string history_file_;
   bool save_unique_ = false;
+  bool path_set_ = false;
 };
 
 } // namespace core
