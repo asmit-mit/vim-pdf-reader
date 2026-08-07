@@ -2,12 +2,12 @@
 
 #include <SFML/Graphics.hpp>
 
-#include "core/history_manager.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
+#include "core/history_manager.h"
 #include "core/render_scheduler.h"
 #include "ui/cmdline.h"
-#include "ui/error_line.h"
+#include "ui/notifications.h"
 #include "ui/pdf_view.h"
 #include "ui/statusbar.h"
 #include "ui/ui_elements.h"
@@ -36,12 +36,13 @@ private:
   core::HistoryManager cmd_history_;
   core::HistoryManager search_history_;
   core::HistoryManager file_history_;
+  core::HistoryManager notification_history_;
   core::RenderScheduler render_scheduler_;
 
   ui::Cmdline cmdline_;
-  ui::Statusbar statusbar_;
   ui::PDFView pdf_view_;
-  ui::ErrorLine error_line_;
+  ui::Statusbar statusbar_;
+  ui::Notifications notifications_;
   ui::UIElements focus_;
 
   const unsigned int res_x_ = 640;

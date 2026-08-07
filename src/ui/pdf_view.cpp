@@ -167,12 +167,12 @@ void PDFView::onCloseDocument() {
 void PDFView::onSwitchPage(int page_idx) {
   if (!has_document_) {
     const char *msg = "No document currently open";
-    event_bus_.emit("cmdline.msg", msg);
+    event_bus_.emit("notification.msg", msg);
     return;
   }
   if (page_idx < 0 || page_idx >= static_cast<int>(document_.size())) {
     const char *msg = "Page number out of range";
-    event_bus_.emit("cmdline.msg", msg);
+    event_bus_.emit("notification.msg", msg);
     return;
   }
   anchor_page_ = static_cast<std::size_t>(page_idx);

@@ -16,7 +16,7 @@ sources = files(
   'src/pdf/pdf_page.cpp',
   'src/pdf/pdf_renderer.cpp',
   'src/ui/cmdline.cpp',
-  'src/ui/error_line.cpp',
+  'src/ui/notifications.cpp',
   'src/ui/cursor.cpp',
   'src/ui/statusbar.cpp',
   'src/ui/page_view.cpp',

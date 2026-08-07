@@ -47,7 +47,7 @@ void CmdProcessor::runCommand(const std::string &cmd) {
   }
 
   if (!commands_.contains(argv[0]))
-    throw std::runtime_error("Not a valid command.");
+    throw std::runtime_error("Not a valid command: " + argv[0]);
 
   unsigned long required_arg_count = commands_[argv[0]].first;
   if (argv.size() != required_arg_count)
@@ -70,7 +70,7 @@ void CmdProcessor::runCommand(const std::string &cmd) {
     if (argv[1] == "search")
       search_history_.clear();
     if (argv[1] == "history")
-      file_history_.clear();
+      cmd_history_.clear();
   }
   if (argv[0] == "close")
     event_bus_.emit("cmd_processor.close_document", true);
