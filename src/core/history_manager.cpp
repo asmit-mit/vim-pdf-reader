@@ -1,12 +1,12 @@
-#include "core/history_saver.h"
+#include "core/history_manager.h"
 
 #include <fstream>
 
 namespace core {
 
-HistorySaver::HistorySaver() {}
+HistoryManager::HistoryManager() {}
 
-void HistorySaver::setPath(const std::string &path) {
+void HistoryManager::setPath(const std::string &path) {
   history_file_ = path;
 
   std::ifstream file(history_file_);
@@ -20,13 +20,14 @@ void HistorySaver::setPath(const std::string &path) {
   }
 
   reset();
+  path_set_ = true;
 }
 
-void HistorySaver::setSaveUnique(bool unique) {
+void HistoryManager::setSaveUnique(bool unique) {
   save_unique_ = unique;
 }
 
-void HistorySaver::clear() {
+void HistoryManager::clear() {
   history_.clear();
   if (save_unique_)
     history_set_.clear();
@@ -34,11 +35,11 @@ void HistorySaver::clear() {
   save();
 }
 
-void HistorySaver::reset() {
+void HistoryManager::reset() {
   curr_idx_ = history_.size();
 }
 
-void HistorySaver::add(const std::string &cmd) {
+void HistoryManager::add(const std::string &cmd) {
   if (cmd.empty())
     return;
 
@@ -57,7 +58,7 @@ void HistorySaver::add(const std::string &cmd) {
   save();
 }
 
-std::string HistorySaver::getNext() {
+std::string HistoryManager::getNext() {
   if (history_.empty())
     return "";
   if (curr_idx_ < history_.size())
@@ -67,7 +68,7 @@ std::string HistorySaver::getNext() {
   return history_[curr_idx_];
 }
 
-std::string HistorySaver::getPrevious() {
+std::string HistoryManager::getPrevious() {
   if (history_.empty())
     return "";
   if (curr_idx_ > 0)
@@ -75,11 +76,18 @@ std::string HistorySaver::getPrevious() {
   return history_[curr_idx_];
 }
 
-std::vector<std::string> HistorySaver::getAllUnique() const {
+std::vector<std::string> HistoryManager::getAll() const {
+  return {history_.begin(), history_.end()};
+}
+
+std::vector<std::string> HistoryManager::getAllUnique() const {
   return {history_set_.begin(), history_set_.end()};
 }
 
-void HistorySaver::save() {
+void HistoryManager::save() {
+  if (!path_set_)
+    return;
+
   std::ofstream file(history_file_, std::ios::trunc);
   if (!file.is_open())
     return;

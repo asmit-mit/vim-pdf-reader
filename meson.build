@@ -9,7 +9,7 @@ includes = include_directories('include')
 sources = files(
   'src/app.cpp',
   'src/core/cmd_processor.cpp',
-  'src/core/history_saver.cpp',
+  'src/core/history_manager.cpp',
   'src/core/render_scheduler.cpp',
   'src/main.cpp',
   'src/pdf/pdf_document.cpp',

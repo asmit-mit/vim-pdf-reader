@@ -2,7 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 
-#include "core/history_saver.h"
+#include "core/history_manager.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
 #include "core/render_scheduler.h"
@@ -33,9 +33,9 @@ private:
 
   core::EventBus event_bus_;
   core::CmdProcessor cmd_processor_;
-  core::HistorySaver cmd_history_;
-  core::HistorySaver search_history_;
-  core::HistorySaver file_history_;
+  core::HistoryManager cmd_history_;
+  core::HistoryManager search_history_;
+  core::HistoryManager file_history_;
   core::RenderScheduler render_scheduler_;
 
   ui::Cmdline cmdline_;

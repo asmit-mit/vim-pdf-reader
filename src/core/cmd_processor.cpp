@@ -9,9 +9,9 @@ namespace core {
 
 CmdProcessor::CmdProcessor(
     EventBus &event_bus,
-    HistorySaver &cmd_history,
-    HistorySaver &search_history,
-    HistorySaver &file_history
+    HistoryManager &cmd_history,
+    HistoryManager &search_history,
+    HistoryManager &file_history
 )
     : cmd_history_(cmd_history), search_history_(search_history), file_history_(file_history),
       event_bus_(event_bus) {
@@ -106,16 +106,16 @@ std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const st
 
   if (cmd == "open") {
     std::vector<std::pair<std::string, std::string>> result;
-    for (const auto &file : file_history_.getAll())
+    for (const auto &file : file_history_.getAllUnique())
       result.emplace_back("open " + file, "");
     return result;
   }
 
   if (cmd == "clear") {
-    std::vector<std::pair<std::string, std::string>> result(2);
-    result[0] = {"clear files", "Clear recent files"};
-    result[1] = {"clear search", "Clear search history"};
-    result[1] = {"clear history", "Clear command history"};
+    std::vector<std::pair<std::string, std::string>> result;
+    result.emplace_back("clear files", "Clear recent files");
+    result.emplace_back("clear search", "Clear search history");
+    result.emplace_back("clear history", "Clear command history");
     return result;
   }
 
