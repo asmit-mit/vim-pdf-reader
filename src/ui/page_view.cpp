@@ -2,12 +2,21 @@
 
 namespace ui {
 
-PageView::PageView(const sf::Texture &dummy) : sprite_(dummy) {
+PageView::PageView(const sf::Texture &dummy, std::vector<sf::RectangleShape> &boxes)
+    : selection_boxes_(boxes), sprite_(dummy) {
   active_ = false;
+  show_selection_boxes_ = false;
 };
 
 void PageView::draw(sf::RenderTarget &window) const {
-  window.draw(sprite_);
+  if (active_)
+    window.draw(sprite_);
+
+  if (!show_selection_boxes_)
+    return;
+
+  for (const auto &shape : selection_boxes_)
+    window.draw(shape);
 }
 
 sf::Sprite &PageView::getSprite() {
@@ -55,6 +64,18 @@ void PageView::setTexture(const sf::Texture &texture) {
 
 void PageView::reset() {
   active_ = false;
+}
+
+void PageView::setSelectionBoxes(const std::vector<sf::RectangleShape> &boxes) {
+  selection_boxes_ = boxes;
+}
+
+void PageView::showSelectionBoxes() {
+  show_selection_boxes_ = true;
+}
+
+void PageView::hideSelectionBoxes() {
+  show_selection_boxes_ = false;
 }
 
 bool PageView::hasTexture() const {

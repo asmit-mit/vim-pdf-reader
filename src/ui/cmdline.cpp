@@ -22,7 +22,6 @@ Cmdline::Cmdline(
       label_(font_normal, ":", utils::char_size), textbox_(font_, utils::char_size, ":"),
       completions_(font_bold, font_italic, utils::char_size) {
   visible_ = false;
-  ignore_next_text_entered_ = false;
 
   textbox_.setCursorSize({2.f, 24.f});
 
@@ -36,7 +35,6 @@ Cmdline::Cmdline(
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     visible_ = focus == ui::UIElements::Cmdline;
-    ignore_next_text_entered_ = visible_;
     if (visible_) {
       textbox_.reset();
       textbox_.startEditing();
@@ -70,13 +68,6 @@ void Cmdline::handleEvent(const sf::Event &event) {
   if (const auto *te = event.getIf<sf::Event::TextEntered>()) {
     if (te->unicode == '\t')
       return;
-  }
-
-  if (ignore_next_text_entered_) {
-    if (event.is<sf::Event::TextEntered>()) {
-      ignore_next_text_entered_ = false;
-      return;
-    }
   }
 
   const auto *key = event.getIf<sf::Event::KeyPressed>();
@@ -137,6 +128,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
       } else if (key->code == sf::Keyboard::Key::Enter) {
         std::println("Text to search for: {}", textbox_.getText());
         search_history_.add(textbox_.getText());
+        event_bus_.emit("cmd.search", textbox_.getText());
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::P && key->control) {
         textbox_.setText(search_history_.getPrevious());

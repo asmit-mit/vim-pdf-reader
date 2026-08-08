@@ -56,7 +56,6 @@ private:
   CmdlineMode mode_;
 
   bool visible_;
-  bool ignore_next_text_entered_;
 };
 
 } // namespace ui

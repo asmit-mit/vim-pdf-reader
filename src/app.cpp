@@ -43,7 +43,7 @@ App::App()
   statusbar_.onResize(view_.getSize());
   pdf_view_.onResize(view_.getSize());
 
-  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) {
+  event_bus_.subscribe<bool>("cmd.quit", [this](bool close) {
     renderer_.clearCache();
     document_.closeDocument();
     window_.close();

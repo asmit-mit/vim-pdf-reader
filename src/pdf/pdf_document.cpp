@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <print>
 
 #include "pdf/pdf_document.h"
 
@@ -81,8 +82,12 @@ bool PDFDocument::isAllContentLoaded() {
 }
 
 void PDFDocument::loadAllContent() {
-  for (int i = 0; i < pages_.size(); i++)
+  if (!doc_)
+    return;
+
+  for (std::size_t i = 0; i < pages_.size(); i++)
     loadPageContent(i);
+  all_content_loaded_ = true;
 }
 
 void PDFDocument::loadPageContent(std::size_t idx) {
