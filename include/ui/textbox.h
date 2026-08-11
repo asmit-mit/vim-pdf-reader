@@ -1,5 +1,7 @@
 #pragma once
 
+#include "graphics/font_library.h"
+#include "graphics/rich_text.h"
 #include "ui/cursor.h"
 #include "ui/widget.h"
 
@@ -7,7 +9,9 @@ namespace ui {
 
 class Textbox : public Widget {
 public:
-  explicit Textbox(const sf::Font &font, int char_size, const std::string &input_string);
+  explicit Textbox(
+      const graphics::FontLibrary &font_lib, int char_size, const std::string &input_string
+  );
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
@@ -25,8 +29,8 @@ public:
   void clear();
   void reset();
 
-  void setText(const std::string &text);
-  const std::string &getText() const;
+  void setText(const std::u32string &text);
+  const std::u32string &getText() const;
 
   void setCursorPosition(int pos);
   std::size_t getCursorPosition() const;
@@ -50,7 +54,7 @@ private:
 
   void deleteSelection();
   void clearSelection();
-  std::string getSelectedText() const;
+  std::u32string getSelectedText() const;
 
 private:
   struct Selection {
@@ -71,7 +75,7 @@ private:
   };
 
 private:
-  const sf::Font &font_;
+  const graphics::FontLibrary &font_library_;
   sf::RectangleShape selection_box_;
 
   sf::Vector2f pos_;
@@ -80,10 +84,10 @@ private:
   sf::Vector2f cursor_size_;
   bool cursor_dirty_;
 
-  sf::Text display_text_;
-  sf::Text display_text_selected_;
+  graphics::RichText display_text_;
+  graphics::RichText display_text_selected_;
 
-  std::string text_;
+  std::u32string text_;
   bool text_dirty_;
 
   Selection selection_;

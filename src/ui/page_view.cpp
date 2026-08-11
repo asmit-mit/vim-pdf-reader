@@ -66,10 +66,6 @@ void PageView::reset() {
   active_ = false;
 }
 
-void PageView::setSelectionBoxes(const std::vector<sf::RectangleShape> &boxes) {
-  selection_boxes_ = boxes;
-}
-
 void PageView::showSelectionBoxes() {
   show_selection_boxes_ = true;
 }

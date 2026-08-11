@@ -6,6 +6,8 @@
 #include "core/event_bus.h"
 #include "core/history_manager.h"
 #include "core/render_scheduler.h"
+#include "graphics/font_library.h"
+#include "graphics/rich_text.h"
 #include "ui/cmdline.h"
 #include "ui/notifications.h"
 #include "ui/pdf_view.h"
@@ -19,14 +21,19 @@ public:
   void run();
 
 private:
+  void initHistory();
+  void initWindow();
+  void initApps();
   void processEvents();
 
 private:
   sf::RenderWindow window_;
   sf::View view_;
-  sf::Font font_normal_;
+  sf::Font font_regular_;
   sf::Font font_bold_;
   sf::Font font_italic_;
+
+  graphics::FontLibrary font_library_;
 
   pdf::PDFDocument document_;
   pdf::PDFRenderer renderer_;

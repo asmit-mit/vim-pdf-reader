@@ -1,3 +1,5 @@
+#include <utf8.h>
+
 #include "ui/notifications.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
@@ -26,7 +28,10 @@ Notifications::Notifications(
   idle_color_ = utils::hexToRGB(settings::bg_);
   hover_color_ = utils::hexToRGB(settings::notification_hover_bg_);
 
-  event_bus_.subscribe<const char *>("notification.msg", [this](const char *msg) { show(msg); });
+  event_bus_
+      .subscribe<const std::u32string &>("notification.msg", [this](const std::u32string &msg) {
+        show(msg);
+      });
 }
 
 void Notifications::update() {
@@ -73,66 +78,80 @@ void Notifications::onResize(const sf::Vector2f &size) {
   layout();
 }
 
-std::string Notifications::wrapText(
-    const std::string &raw, const sf::Font &font, unsigned int char_size, float max_width
+std::u32string Notifications::wrapText(
+    const std::u32string &raw, const sf::Font &font, unsigned int char_size, float max_width
 ) {
-  std::istringstream words(raw);
-  std::string word, line, result;
+  std::vector<std::u32string> tokens;
+  std::u32string current;
+  for (char32_t c : raw) {
+    if (c == U' ' || c == U'\t' || c == U'\n' || c == U'\r') {
+      if (!current.empty()) {
+        tokens.push_back(current);
+        current.clear();
+      }
+    } else {
+      current += c;
+    }
+  }
+  if (!current.empty())
+    tokens.push_back(current);
+
   sf::Text probe(font, "", char_size);
 
-  auto line_width = [&](const std::string &s) -> float {
-    probe.setString(s);
+  auto line_width = [&](const std::u32string &s) -> float {
+    probe.setString(sf::String(s));
     return probe.getLocalBounds().size.x;
   };
 
-  auto flushLine = [&](const std::string &l) { result += l + '\n'; };
+  std::u32string line, result;
 
-  auto pushWord = [&](const std::string &w) {
-    std::string remaining = w;
+  auto flushLine = [&](const std::u32string &l) { result += l + U'\n'; };
+
+  auto pushWord = [&](const std::u32string &w) {
+    std::u32string remaining = w;
     while (!remaining.empty()) {
-      std::string candidate = line.empty() ? remaining : line + ' ' + remaining;
+      std::u32string candidate = line.empty() ? remaining : line + U' ' + remaining;
       if (line_width(candidate) <= max_width) {
         line = candidate;
         return;
       }
-
-      std::string chunk = line.empty() ? "" : line + ' ';
-      std::string seg;
-      for (char c : remaining) {
-        std::string with_dash = chunk + seg + c + '-';
-        std::string without = chunk + seg + c;
+      std::u32string chunk = line.empty() ? U"" : line + U' ';
+      std::u32string seg;
+      for (char32_t c : remaining) {
+        std::u32string with_dash = chunk + seg + c + U'-';
         if (line_width(with_dash) > max_width) {
-          flushLine(chunk + seg + '-');
-          chunk = "";
-          line = "";
-          seg = std::string(1, c);
-        } else
+          flushLine(chunk + seg + U'-');
+          chunk = U"";
+          line = U"";
+          seg = std::u32string(1, c);
+        } else {
           seg += c;
+        }
       }
-
       remaining = seg;
       if (!line.empty() && !remaining.empty()) {
-        std::string try_append = line + ' ' + remaining;
+        std::u32string try_append = line + U' ' + remaining;
         if (line_width(try_append) <= max_width) {
           line = try_append;
           return;
         }
         flushLine(line);
-        line = "";
+        line = U"";
       }
       line = remaining;
       return;
     }
   };
 
-  while (words >> word) {
-    std::string candidate = line.empty() ? word : line + ' ' + word;
+  for (const std::u32string &word : tokens) {
+    std::u32string candidate = line.empty() ? word : line + U' ' + word;
     if (!line.empty() && line_width(candidate) > max_width) {
       flushLine(line);
-      line = "";
+      line = U"";
       pushWord(word);
-    } else
+    } else {
       line = candidate;
+    }
   }
 
   if (!line.empty())
@@ -141,11 +160,11 @@ std::string Notifications::wrapText(
   return result;
 }
 
-void Notifications::show(const char *msg) {
+void Notifications::show(const std::u32string &msg) {
   history_.add(msg);
 
   const float inner_width = max_width_ - 2.f * padding_;
-  std::string wrapped = wrapText(msg, font_normal_, utils::char_size, inner_width);
+  std::u32string wrapped = wrapText(msg, font_normal_, utils::char_size, inner_width);
 
   display_msg_.setString(wrapped);
   display_timer_.restart();

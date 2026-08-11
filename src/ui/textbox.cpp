@@ -4,9 +4,11 @@
 
 namespace ui {
 
-Textbox::Textbox(const sf::Font &font, int char_size, const std::string &input_string)
-    : font_(font), display_text_(font, input_string, char_size),
-      display_text_selected_(font, input_string, char_size) {
+Textbox::Textbox(
+    const graphics::FontLibrary &font_lib, int char_size, const std::string &input_string
+)
+    : font_library_(font_lib), display_text_(font_lib, char_size),
+      display_text_selected_(font_lib, char_size) {
   visible_ = false;
   editing_ = false;
   text_dirty_ = false;
@@ -16,8 +18,8 @@ Textbox::Textbox(const sf::Font &font, int char_size, const std::string &input_s
 
   selection_box_.setFillColor(utils::hexToRGB(settings::textbox_highlight_fg_));
 
-  display_text_.setFillColor(utils::hexToRGB(settings::fg_));
-  display_text_selected_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
+  display_text_.setColor(utils::hexToRGB(settings::fg_));
+  display_text_selected_.setColor(utils::hexToRGB(settings::cmd_bg_));
 
   cursor_size_ = {0.f, 0.f};
   pos_ = {0.f, 0.f};
@@ -111,7 +113,7 @@ void Textbox::handleEvent(const sf::Event &event) {
         if (selection_.active())
           deleteSelection();
 
-        auto clip = sf::Clipboard::getString().toAnsiString();
+        auto clip = sf::Clipboard::getString().toUtf32();
         text_.insert(selection_.caret, clip);
 
         setCursorPosition(selection_.caret + clip.size());
@@ -165,11 +167,11 @@ void Textbox::handleEvent(const sf::Event &event) {
 
     cursor_.typing();
   } else if (const auto *text = event.getIf<sf::Event::TextEntered>()) {
-    if (text->unicode >= 32 && text->unicode < 127) {
+    if (text->unicode >= 32 && text->unicode != 127) {
       if (selection_.active())
         deleteSelection();
 
-      text_.insert(text_.begin() + selection_.caret, static_cast<char>(text->unicode));
+      text_.insert(text_.begin() + selection_.caret, static_cast<char32_t>(text->unicode));
 
       setCursorPosition(selection_.caret + 1);
       clearSelection();
@@ -254,14 +256,14 @@ void Textbox::reset() {
   selection_.anchor = 0;
 }
 
-void Textbox::setText(const std::string &text) {
+void Textbox::setText(const std::u32string &text) {
   text_ = text;
   setCursorPosition(text_.size());
   clearSelection();
   text_dirty_ = true;
 }
 
-const std::string &Textbox::getText() const {
+const std::u32string &Textbox::getText() const {
   return text_;
 }
 
@@ -329,7 +331,7 @@ void Textbox::ctrlBackspace() {
   if (selection_.caret == 0)
     return;
 
-  float start = findWordStart(selection_.caret);
+  std::size_t start = findWordStart(selection_.caret);
   text_.erase(start, selection_.caret - start);
   setCursorPosition(start);
   clearSelection();
@@ -342,7 +344,7 @@ void Textbox::ctrlDel() {
     return;
   }
 
-  float end = findWordEnd(selection_.caret);
+  std::size_t end = findWordEnd(selection_.caret);
   text_.erase(selection_.caret, end - selection_.caret);
   clearSelection();
   text_dirty_ = true;
@@ -375,7 +377,7 @@ std::size_t Textbox::getCharacterIndex(const sf::Vector2i &mouse) {
   for (std::size_t i = 0; i < glyphs.size(); ++i) {
     const float left = glyphs[i].position.x;
     const float right = (i + 1 < glyphs.size()) ? glyphs[i + 1].position.x
-                                                : glyphs[i].position.x + glyphs[i].glyph.advance;
+                                                : glyphs[i].position.x + glyphs[i].advance;
 
     const float midpoint = (left + right) * 0.5f;
     if (x < midpoint)
@@ -394,7 +396,7 @@ float Textbox::getCursorX(std::size_t index) {
   if (index < glyphs.size())
     local = glyphs[index].position;
   else
-    local = {glyphs.back().position.x + glyphs.back().glyph.advance, glyphs.back().position.y};
+    local = {glyphs.back().position.x + glyphs.back().advance, glyphs.back().position.y};
 
   return display_text_.getTransform().transformPoint(local).x;
 }
@@ -414,7 +416,7 @@ void Textbox::rebuildDisplayTexts() {
   const auto first = selection_.begin();
   const auto last = selection_.end();
 
-  std::string selected = text_.substr(first, last - first);
+  std::u32string selected = text_.substr(first, last - first);
   display_text_selected_.setString(selected);
 
   sf::Vector2f pos = {getCursorX(first), pos_.y};
@@ -441,7 +443,7 @@ void Textbox::clearSelection() {
   selection_dirty_ = true;
 }
 
-std::string Textbox::getSelectedText() const {
+std::u32string Textbox::getSelectedText() const {
   const auto first = selection_.begin();
   const auto last = selection_.end();
   return text_.substr(first, last - first);

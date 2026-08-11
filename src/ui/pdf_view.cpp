@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <utf8.h>
 
 #include "pdf/pdf_renderer.h"
 #include "ui/pdf_view.h"
@@ -170,7 +171,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
   } catch (const std::runtime_error &e) {
     onCloseDocument();
-    throw e;
+    event_bus_.emit("notification.msg", utf8::utf8to32(std::string(e.what())));
   }
 }
 
@@ -186,12 +187,12 @@ void PDFView::onCloseDocument() {
 
 void PDFView::onSwitchPage(int page_idx) {
   if (!has_document_) {
-    const char *msg = "No document currently open";
+    const std::u32string msg(U"No document currently open");
     event_bus_.emit("notification.msg", msg);
     return;
   }
   if (page_idx < 0 || page_idx >= static_cast<int>(document_.size())) {
-    const char *msg = "Page number out of range";
+    const std::u32string msg(U"Page number out of range");
     event_bus_.emit("notification.msg", msg);
     return;
   }
@@ -204,7 +205,8 @@ void PDFView::onSwitchPage(int page_idx) {
 
 void PDFView::onSearchPage(const std::string &text) {
   if (!has_document_) {
-    event_bus_.emit("notification.msg", "No document open to search");
+    const std::u32string msg(U"No document open to search");
+    event_bus_.emit("notification.msg", msg);
     return;
   }
 

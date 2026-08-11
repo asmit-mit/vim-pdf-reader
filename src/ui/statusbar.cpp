@@ -70,9 +70,9 @@ void Statusbar::update() {
 
   display_area_.setPosition({curr_x_, y});
 
-  const float round_y = std::round(display_area_.getGlobalBounds().getCenter().y);
-  display_filepath_.setPosition({utils::padding, round_y});
+  const float round_y = std::round(y + height_ / 2.f);
 
+  display_filepath_.setPosition({utils::padding, round_y});
   const float page_num_x = std::round(
       display_area_.getSize().x - display_page_num_.getLocalBounds().size.x - utils::padding
   );
@@ -91,13 +91,19 @@ void Statusbar::onResize(const sf::Vector2f &size) {
   display_area_.setSize({size.x, height_});
 
   const auto filepath_bounds = display_filepath_.getLocalBounds();
-  display_filepath_.setOrigin({filepath_bounds.position.x, filepath_bounds.getCenter().y});
+  display_filepath_.setOrigin(
+      {filepath_bounds.position.x, filepath_bounds.position.y + filepath_bounds.size.y / 2.f}
+  );
 
   const auto page_num_bounds = display_page_num_.getLocalBounds();
-  display_page_num_.setOrigin({page_num_bounds.position.x, page_num_bounds.getCenter().y});
+  display_page_num_.setOrigin(
+      {page_num_bounds.position.x, page_num_bounds.position.y + page_num_bounds.size.y / 2.f}
+  );
 
   const auto zoom_bounds = display_zoom_.getLocalBounds();
-  display_zoom_.setOrigin({zoom_bounds.position.x, zoom_bounds.getCenter().y});
+  display_zoom_.setOrigin(
+      {zoom_bounds.position.x, zoom_bounds.position.y + zoom_bounds.size.y / 2.f}
+  );
 }
 
 } // namespace ui

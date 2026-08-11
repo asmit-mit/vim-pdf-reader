@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <print>
 
 #include "pdf/pdf_document.h"
 
@@ -44,17 +43,25 @@ void PDFDocument::openDocument(const std::string &filepath) {
   page_with_max_width_ = 0;
 
   pages_.reserve(page_count);
-  for (int i = 0; i < page_count; i++) {
-    fz_page *page = fz_load_page(ctx_, doc_, i);
-    fz_rect bounds = fz_bound_page(ctx_, page);
+  for (int i = 0; i < page_count; ++i) {
+    fz_page *page = nullptr;
 
-    int width = std::abs(bounds.x0 - bounds.x1);
-    if (width > max_width) {
-      page_with_max_width_ = i;
-      max_width = width;
+    fz_try(ctx_) {
+      page = fz_load_page(ctx_, doc_, i);
+
+      fz_rect bounds = fz_bound_page(ctx_, page);
+
+      int width = static_cast<int>(std::abs(bounds.x1 - bounds.x0));
+
+      if (width > max_width) {
+        max_width = width;
+        page_with_max_width_ = i;
+      }
+
+      pages_.emplace_back(i, bounds);
     }
-
-    pages_.emplace_back(i, bounds);
+    fz_always(ctx_) fz_drop_page(ctx_, page);
+    fz_catch(ctx_) throw std::runtime_error("Failed to inspect PDF page");
   }
 }
 

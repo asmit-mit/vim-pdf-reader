@@ -3,6 +3,7 @@
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
 #include "core/history_manager.h"
+#include "graphics/font_library.h"
 #include "ui/completions.h"
 #include "ui/textbox.h"
 #include "ui/widget.h"
@@ -18,6 +19,7 @@ enum class CmdlineMode {
 class Cmdline : public Widget {
 public:
   explicit Cmdline(
+      const graphics::FontLibrary &font_lib,
       const sf::Font &font_normal,
       const sf::Font &font_bold,
       const sf::Font &font_italic,
@@ -51,7 +53,7 @@ private:
   sf::RectangleShape display_area_;
 
   sf::Vector2f window_size_;
-  std::string original_string_;
+  std::u32string original_string_;
 
   CmdlineMode mode_;
 
