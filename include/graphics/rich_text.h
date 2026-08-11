@@ -71,7 +71,7 @@ private:
 
 private:
   void createTextRuns(const std::u32string &text, std::vector<Run> &runs);
-  void processRuns(const std::vector<Run> &runs);
+  void processLine(const std::vector<Run> &runs, float &pen_x, float &pen_y);
   const CachedGlyph *getOrRenderGlyph(FontType font_type, uint32_t glyph_idx);
   void shapeAndCache(const std::u32string &text);
 
@@ -89,6 +89,7 @@ private:
   sf::Vector2f size_;
   uint32_t pixel_size_;
   sf::Color text_color_;
+  float line_height_;
 };
 
 } // namespace graphics

@@ -1,15 +1,15 @@
 #include "graphics/rich_text.h"
 #include "graphics/font_library.h"
-#include <print>
 
 #include <iostream>
+#include <print>
 #include <stdexcept>
 
 namespace graphics {
 
 RichText::RichText(const graphics::FontLibrary &font_lib, uint32_t character_size)
     : font_lib_(font_lib), hb_buffer_(hb_buffer_create()), hb_fonts_{}, size_{0.f, 0.f},
-      pixel_size_(character_size), text_color_(sf::Color::White) {
+      pixel_size_(character_size), text_color_(sf::Color::White), line_height_{} {
   if (!hb_buffer_allocation_successful(hb_buffer_))
     throw std::runtime_error("Failed to create hb_buffer");
 
@@ -223,16 +223,7 @@ const CachedGlyph *RichText::getOrRenderGlyph(FontType font_type, uint32_t glyph
   return &ins->second;
 }
 
-void RichText::processRuns(const std::vector<Run> &runs) {
-  float pen_x = 0.f;
-  float pen_y = 0.f;
-
-  FT_Face latin_face = font_lib_.getFontFace(graphics::FontType::Latin, pixel_size_);
-  if (latin_face)
-    pen_y = static_cast<float>(latin_face->size->metrics.ascender >> 6);
-
-  float line_height = pen_y;
-
+void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pen_y) {
   for (const Run &run : runs) {
     hb_font_t *hb_font = hb_fonts_[run.font_type];
     if (!hb_font)
@@ -267,11 +258,10 @@ void RichText::processRuns(const std::vector<Run> &runs) {
       const CachedGlyph *glyph = getOrRenderGlyph(run.font_type, glyph_idx);
       if (glyph) {
         sf::Sprite sprite(glyph->texture);
-        sf::Vector2f glyph_pos{
-            pen_x + x_offset + static_cast<float>(glyph->bearing_x),
-            pen_y - y_offset - static_cast<float>(glyph->bearing_y)
-        };
-        sprite.setPosition(glyph_pos);
+        sprite.setPosition(
+            {pen_x + x_offset + static_cast<float>(glyph->bearing_x),
+             pen_y - y_offset - static_cast<float>(glyph->bearing_y)}
+        );
         sprite.setColor(glyph->is_color ? sf::Color::White : text_color_);
         sprite.setScale({glyph->scale, glyph->scale});
 
@@ -283,18 +273,43 @@ void RichText::processRuns(const std::vector<Run> &runs) {
       pen_x += (glyph && glyph->is_color) ? static_cast<float>(glyph->advance) : x_adv;
     }
   }
-
-  size_.x = pen_x;
-  size_.y = line_height;
 }
 
 void RichText::shapeAndCache(const std::u32string &text) {
   if (font_lib_.empty() || text.empty())
     return;
 
-  std::vector<Run> runs;
-  createTextRuns(text, runs);
-  processRuns(runs);
+  FT_Face latin_face = font_lib_.getFontFace(graphics::FontType::Latin, pixel_size_);
+  float ascender = static_cast<float>(latin_face->size->metrics.ascender >> 6);
+  float descender = static_cast<float>(latin_face->size->metrics.descender >> 6);
+  float line_gap = static_cast<float>(latin_face->size->metrics.height >> 6);
+  line_height_ = std::max(ascender - descender, line_gap);
+
+  float pen_y = ascender;
+  float max_x = 0.f;
+
+  std::u32string::size_type start = 0;
+  while (true) {
+    auto end = text.find(U'\n', start);
+    std::u32string segment = text.substr(start, end == std::u32string::npos ? end : end - start);
+
+    if (!segment.empty()) {
+      float pen_x = 0.f;
+      std::vector<Run> runs;
+      createTextRuns(segment, runs);
+      processLine(runs, pen_x, pen_y);
+      max_x = std::max(max_x, pen_x);
+    }
+
+    if (end == std::u32string::npos)
+      break;
+
+    pen_y += line_height_;
+    start = end + 1;
+  }
+
+  size_.x = max_x;
+  size_.y = pen_y;
 }
 
 } // namespace graphics

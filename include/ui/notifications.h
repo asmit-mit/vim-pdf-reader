@@ -2,6 +2,8 @@
 
 #include "core/event_bus.h"
 #include "core/history_manager.h"
+#include "graphics/font_library.h"
+#include "graphics/rich_text.h"
 #include "ui/widget.h"
 
 namespace ui {
@@ -9,6 +11,7 @@ namespace ui {
 class Notifications : public Widget {
 public:
   explicit Notifications(
+      const graphics::FontLibrary &font_lib,
       const sf::Font &font_normal,
       const sf::Font &font_bold,
       core::HistoryManager &notification_history,
@@ -30,11 +33,12 @@ private:
 private:
   core::EventBus &event_bus_;
   core::HistoryManager &history_;
+  const graphics::FontLibrary &font_library_;
   const sf::Font &font_normal_;
   const sf::Font &font_bold_;
 
   sf::Text display_header_;
-  sf::Text display_msg_;
+  graphics::RichText display_msg_;
   sf::RectangleShape display_area_;
   sf::Clock display_timer_;
   sf::Vector2f window_size_;
