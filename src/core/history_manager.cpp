@@ -14,12 +14,15 @@ void HistoryManager::setPath(const std::string &path) {
 
   std::string line;
   while (std::getline(file, line)) {
-    std::u32string utf32_line = utf8::utf8to32(line);
+    if (line.empty())
+      continue;
 
-    if (!line.empty()) {
-      history_.push_back(utf32_line);
-      history_set_.insert(utf32_line);
-    }
+    std::u32string cmd = utf8::utf8to32(line);
+
+    if (save_unique_)
+      history_set_.insert(cmd);
+    else
+      history_.push_back(cmd);
   }
 
   reset();
@@ -27,19 +30,37 @@ void HistoryManager::setPath(const std::string &path) {
 }
 
 void HistoryManager::setSaveUnique(bool unique) {
+  if (save_unique_ == unique)
+    return;
+
   save_unique_ = unique;
+
+  if (save_unique_) {
+    history_set_.clear();
+    for (const auto &cmd : history_)
+      history_set_.insert(cmd);
+    history_.clear();
+  } else {
+    history_.clear();
+    for (const auto &cmd : history_set_)
+      history_.push_back(cmd);
+    history_set_.clear();
+  }
+
+  reset();
+  save();
 }
 
 void HistoryManager::clear() {
   history_.clear();
-  if (save_unique_)
-    history_set_.clear();
+  history_set_.clear();
+
   reset();
   save();
 }
 
 void HistoryManager::reset() {
-  curr_idx_ = history_.size();
+  curr_idx_ = save_unique_ ? history_set_.size() : history_.size();
 }
 
 void HistoryManager::add(const std::u32string &cmd) {
@@ -47,15 +68,18 @@ void HistoryManager::add(const std::u32string &cmd) {
     return;
 
   if (save_unique_) {
-    if (history_set_.count(cmd))
+    if (history_set_.size() >= max_size_)
       return;
-    history_set_.insert(cmd);
-  }
 
-  history_.push_back(cmd);
-  if (history_.size() > max_size_) {
-    history_set_.erase(history_.front());
-    history_.pop_front();
+    auto [it, inserted] = history_set_.insert(cmd);
+
+    if (!inserted)
+      return;
+  } else {
+    history_.push_back(cmd);
+
+    if (history_.size() > max_size_)
+      history_.pop_front();
   }
 
   reset();
@@ -63,29 +87,51 @@ void HistoryManager::add(const std::u32string &cmd) {
 }
 
 std::u32string HistoryManager::getNext() {
+  if (save_unique_)
+    return U"";
+
   if (history_.empty())
     return U"";
+
   if (curr_idx_ < history_.size())
     ++curr_idx_;
+
   if (curr_idx_ == history_.size())
     return U"";
+
   return history_[curr_idx_];
 }
 
 std::u32string HistoryManager::getPrevious() {
+  if (save_unique_)
+    return U"";
+
   if (history_.empty())
     return U"";
+
   if (curr_idx_ > 0)
     --curr_idx_;
+
   return history_[curr_idx_];
 }
 
 std::vector<std::u32string> HistoryManager::getAll() const {
+  if (save_unique_)
+    return {history_set_.begin(), history_set_.end()};
+
   return {history_.begin(), history_.end()};
 }
 
 std::vector<std::u32string> HistoryManager::getAllUnique() const {
-  return {history_set_.begin(), history_set_.end()};
+  if (save_unique_)
+    return {history_set_.begin(), history_set_.end()};
+
+  std::unordered_set<std::u32string> unique;
+
+  for (const auto &cmd : history_)
+    unique.insert(cmd);
+
+  return {unique.begin(), unique.end()};
 }
 
 void HistoryManager::save() {
@@ -93,12 +139,18 @@ void HistoryManager::save() {
     return;
 
   std::ofstream file(history_file_, std::ios::trunc);
+
   if (!file.is_open())
     return;
 
-  for (const auto &cmd : history_) {
-    std::string utf8_cmd = utf8::utf32to8(cmd);
-    file << utf8_cmd << '\n';
+  if (save_unique_) {
+    for (const auto &cmd : history_set_) {
+      file << utf8::utf32to8(cmd) << '\n';
+    }
+  } else {
+    for (const auto &cmd : history_) {
+      file << utf8::utf32to8(cmd) << '\n';
+    }
   }
 }
 

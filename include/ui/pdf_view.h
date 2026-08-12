@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "core/event_bus.h"
+#include "core/history_manager.h"
 #include "core/render_scheduler.h"
 #include "pdf/pdf_document.h"
 #include "ui/page_view.h"
@@ -17,7 +18,10 @@ struct PDFSearchResult {
 class PDFView {
 public:
   explicit PDFView(
-      pdf::PDFDocument &document, core::RenderScheduler &scheduler, core::EventBus &event_bus
+      core::HistoryManager &file_history,
+      pdf::PDFDocument &document,
+      core::RenderScheduler &scheduler,
+      core::EventBus &event_bus
   );
 
   void draw(sf::RenderTarget &window) const;
@@ -65,6 +69,7 @@ private:
   std::vector<PDFSearchResult> page_search_result_;
 
   core::EventBus &event_bus_;
+  core::HistoryManager &file_history_;
   pdf::PDFDocument &document_;
   core::RenderScheduler &scheduler_;
 

@@ -10,9 +10,13 @@
 namespace ui {
 
 PDFView::PDFView(
-    pdf::PDFDocument &document, core::RenderScheduler &scheduler, core::EventBus &event_bus
+    core::HistoryManager &file_history,
+    pdf::PDFDocument &document,
+    core::RenderScheduler &scheduler,
+    core::EventBus &event_bus
 )
-    : event_bus_(event_bus), document_(document), scheduler_(scheduler) {
+    : event_bus_(event_bus), file_history_(file_history), document_(document),
+      scheduler_(scheduler) {
   has_document_ = false;
   should_take_input_ = false;
   need_initial_pos_ = false;
@@ -169,6 +173,8 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
     event_bus_.emit("statusbar.total_pages", document_.size());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
+
+    file_history_.add(utf8::utf8to32(filepath));
   } catch (const std::runtime_error &e) {
     onCloseDocument();
     event_bus_.emit("notification.msg", utf8::utf8to32(std::string(e.what())));

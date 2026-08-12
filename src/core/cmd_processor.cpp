@@ -57,14 +57,9 @@ void CmdProcessor::runCommand(const std::string &cmd) {
         std::to_string(required_arg_count - 1)
     );
 
-  if (argv[0] == "open") {
-    try {
-      event_bus_.emit("cmd.open_document", argv[1]);
-      file_history_.add(utf8::utf8to32(argv[1]));
-    } catch (const std::runtime_error &e) {
-      throw e;
-    }
-  }
+  if (argv[0] == "open")
+    event_bus_.emit("cmd.open_document", argv[1]);
+
   if (argv[0] == "clear") {
     if (argv[1] == "files")
       file_history_.clear();
@@ -73,6 +68,7 @@ void CmdProcessor::runCommand(const std::string &cmd) {
     if (argv[1] == "history")
       cmd_history_.clear();
   }
+
   if (argv[0] == "close")
     event_bus_.emit("cmd.close_document", true);
   if (argv[0] == "reload")

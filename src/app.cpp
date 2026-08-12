@@ -15,7 +15,8 @@ App::App()
       cmdline_textbox_(font_library_, glyph_atlas_, utils::char_size, ":"),
       cmdline_completions_(font_library_, glyph_atlas_, font_regular_, font_italic_, utils::char_size),
       cmdline_(font_regular_, event_bus_, cmd_processor_, cmd_history_, search_history_, cmdline_textbox_, cmdline_completions_),
-      pdf_view_(document_, render_scheduler_, event_bus_), statusbar_(font_regular_, event_bus_),
+      pdf_view_(file_history_, document_, render_scheduler_, event_bus_),
+      statusbar_(font_regular_, event_bus_),
       notifications_(font_library_, glyph_atlas_, font_regular_, font_bold_, notification_history_, event_bus_) {
   initHistory();
   initWindow();
