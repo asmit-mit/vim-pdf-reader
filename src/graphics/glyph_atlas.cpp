@@ -139,7 +139,7 @@ bool GlyphAtlas::rastarizeGlyph(const Key &key, AtlasGlyph &glyph, FT_Face face)
     float scale = static_cast<float>(key.pixel_size) / static_cast<float>(height);
     glyph.bearing_x = static_cast<int>(glyph.bearing_x * scale);
     glyph.bearing_y = static_cast<int>(glyph.bearing_y * scale);
-    glyph.advance = static_cast<long>(key.pixel_size + 1);
+    glyph.advance = static_cast<long>(key.pixel_size);
     glyph.scale = scale;
   }
 
@@ -280,7 +280,7 @@ bool GlyphAtlas::rastarizeGlyph(
   glyph.scale = scale;
   glyph.bearing_x = static_cast<int>(glyph.bearing_x * scale);
   glyph.bearing_y = static_cast<int>(glyph.bearing_y * scale);
-  glyph.advance = static_cast<long>(key.pixel_size + 1);
+  glyph.advance = static_cast<long>(key.pixel_size);
 
   curr->row_h = std::max(curr->row_h, height);
   curr->cursor_x = cx + width;

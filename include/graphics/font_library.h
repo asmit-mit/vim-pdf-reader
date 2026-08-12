@@ -1,11 +1,14 @@
 #pragma once
 
 #include <ft2build.h>
+#include <hb-ft.h>
+#include <hb.h>
 #include FT_FREETYPE_H
 
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <unordered_map>
 
 namespace graphics {
@@ -16,6 +19,11 @@ enum FontType : int {
   Italic = 2,
   Emoji = 3,
   CJK = 4,
+};
+
+struct Font {
+  FT_Face ft_face = nullptr;
+  hb_font_t *hb_font = nullptr;
 };
 
 class FontLibrary {
@@ -31,9 +39,9 @@ public:
   ~FontLibrary();
 
   void tryLoadFont(FontType type, const char *path);
-  FontType getFontTypeForCodepoint(uint32_t codepoint, FontType default_type = FontType::Regular) const;
-
-  FT_Face getFontFace(FontType type, uint32_t pixel_size) const;
+  FontType
+  getFontTypeForCodepoint(uint32_t codepoint, FontType default_type = FontType::Regular) const;
+  Font *getFont(FontType type, uint32_t pixel_size) const;
 
   bool empty() const;
   std::size_t size() const;
@@ -66,13 +74,14 @@ private:
 private:
   void destroy();
 
-  FT_Library library_;
+  FT_Library library_ = nullptr;
 
-  mutable std::unordered_map<FontKey, FT_Face, FontKeyHash> cache_;
-  std::array<FT_Face, 5> fonts_;
-  std::array<const char *, 5> fonts_paths_;
+  std::array<FT_Face, 5> ft_fonts_{};
+  std::array<std::string, 5> fonts_paths_{};
 
-  bool is_empty_;
+  mutable std::unordered_map<FontKey, Font, FontKeyHash> cache_;
+
+  bool is_empty_ = true;
 };
 
 } // namespace graphics

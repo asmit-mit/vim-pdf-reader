@@ -3,7 +3,6 @@
 #include <SFML/Graphics.hpp>
 
 #include <ft2build.h>
-#include <hb-ft.h>
 #include <hb.h>
 
 #include "graphics/font_library.h"
@@ -31,7 +30,7 @@ public:
   RichText(RichText &&other) noexcept;
   RichText &operator=(RichText &&other) noexcept = delete;
 
-  ~RichText();
+  ~RichText() = default;
 
   void setString(const std::u32string &text);
   void setFillColor(sf::Color color);
@@ -64,7 +63,6 @@ private:
   std::vector<sf::VertexArray> vertex_arrays_;
 
   hb_buffer_t *hb_buffer_;
-  std::array<hb_font_t *, 5> hb_fonts_;
 
   sf::Vector2f size_;
   uint32_t pixel_size_;

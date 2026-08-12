@@ -8,8 +8,8 @@ namespace graphics {
 RichText::RichText(
     const graphics::FontLibrary &font_lib, GlyphAtlas &glyph_atlas, uint32_t character_size
 )
-    : font_lib_(font_lib), atlas_(glyph_atlas), hb_buffer_(hb_buffer_create()), hb_fonts_{},
-      size_{0.f, 0.f}, pixel_size_(character_size), text_color_(sf::Color::White), line_height_{} {
+    : font_lib_(font_lib), atlas_(glyph_atlas), hb_buffer_(hb_buffer_create()), size_{0.f, 0.f},
+      pixel_size_(character_size), text_color_(sf::Color::White), line_height_{} {
   if (!hb_buffer_allocation_successful(hb_buffer_))
     throw std::runtime_error("Failed to create hb_buffer");
 
@@ -21,20 +21,10 @@ RichText::RichText(RichText &&other) noexcept
     : font_lib_(other.font_lib_), atlas_(other.atlas_),
       shaped_glyphs_(std::move(other.shaped_glyphs_)),
       vertex_arrays_(std::move(other.vertex_arrays_)),
-      hb_buffer_(std::exchange(other.hb_buffer_, nullptr)),
-      hb_fonts_(std::exchange(other.hb_fonts_, {})), size_(other.size_),
+      hb_buffer_(std::exchange(other.hb_buffer_, nullptr)), size_(other.size_),
       pixel_size_(other.pixel_size_), text_color_(other.text_color_),
       line_height_(other.line_height_), font_loaded_(other.font_loaded_),
       default_font_type_(other.default_font_type_) {}
-
-RichText::~RichText() {
-  for (hb_font_t *f : hb_fonts_) {
-    if (f)
-      hb_font_destroy(f);
-  }
-  if (hb_buffer_)
-    hb_buffer_destroy(hb_buffer_);
-}
 
 void RichText::setString(const std::u32string &text) {
   text_ = text;
@@ -66,19 +56,7 @@ void RichText::setCharacterSize(uint32_t size) {
     return;
 
   pixel_size_ = size;
-  for (std::size_t i = 0; i < hb_fonts_.size(); ++i) {
-    FontType type = static_cast<FontType>(i);
-    FT_Face face = font_lib_.getFontFace(type, pixel_size_);
-    if (!face)
-      continue;
-
-    if (hb_fonts_[i])
-      hb_font_destroy(hb_fonts_[i]);
-
-    hb_fonts_[i] = hb_ft_font_create_referenced(face);
-    if (!hb_fonts_[i])
-      throw std::runtime_error("Failed to recreate hb_font_t");
-  }
+  loadFonts();
 }
 
 void RichText::setBold() {
@@ -108,15 +86,9 @@ void RichText::draw(sf::RenderTarget &target, sf::RenderStates states) const {
 }
 
 void RichText::loadFonts() {
-  for (std::size_t i = 0; i < hb_fonts_.size(); ++i) {
+  for (std::size_t i = 0; i < 5; ++i) {
     FontType type = static_cast<FontType>(i);
-    FT_Face face = font_lib_.getFontFace(type, pixel_size_);
-    if (!face)
-      continue;
-
-    hb_fonts_[i] = hb_ft_font_create_referenced(face);
-    if (!hb_fonts_[i])
-      throw std::runtime_error("Failed to create hb_font_t");
+    font_lib_.getFont(type, pixel_size_);
   }
 }
 
@@ -153,7 +125,9 @@ void RichText::createTextRuns(const std::u32string &text, std::vector<Run> &runs
 
 void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pen_y) {
   for (const Run &run : runs) {
-    hb_font_t *hb_font = hb_fonts_[run.font_type];
+    graphics::Font *font = font_lib_.getFont(run.font_type, pixel_size_);
+
+    hb_font_t *hb_font = font->hb_font;
     if (!hb_font)
       continue;
 
@@ -174,7 +148,7 @@ void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pe
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer_, &count);
     hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer_, &count);
 
-    FT_Face ft_face = font_lib_.getFontFace(run.font_type, pixel_size_);
+    FT_Face ft_face = font->ft_face;
 
     for (unsigned int i = 0; i < count; ++i) {
       uint32_t glyph_idx = info[i].codepoint;
@@ -231,7 +205,7 @@ void RichText::shapeAndCache(const std::u32string &text) {
   if (font_lib_.empty() || text.empty())
     return;
 
-  FT_Face latin_face = font_lib_.getFontFace(graphics::FontType::Regular, pixel_size_);
+  FT_Face latin_face = font_lib_.getFont(graphics::FontType::Regular, pixel_size_)->ft_face;
   float ascender = static_cast<float>(latin_face->size->metrics.ascender >> 6);
   float descender = static_cast<float>(latin_face->size->metrics.descender >> 6);
   float line_gap = static_cast<float>(latin_face->size->metrics.height >> 6);
