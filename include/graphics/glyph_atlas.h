@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <ft2build.h>
+#include <hb.h>
 #include <unordered_map>
 #include FT_FREETYPE_H
 
@@ -26,8 +27,13 @@ class GlyphAtlas {
 public:
   GlyphAtlas(unsigned int width = 1024, unsigned int height = 1024);
 
-  const AtlasGlyph *
-  getOrPack(FontType font_type, uint32_t glyph_idx, uint32_t pixel_size, FT_Face face);
+  const AtlasGlyph *getOrPack(
+      FontType font_type,
+      uint32_t glyph_idx,
+      uint32_t pixel_size,
+      FT_Face ft_face,
+      hb_font_t *hb_font
+  );
 
   const sf::Texture &texture(std::size_t page) const;
   std::size_t pageCount() const;
@@ -65,6 +71,8 @@ private:
   };
 
 private:
+  bool rastarizeGlyph(const Key &key, AtlasGlyph &glyph, FT_Face face);
+  bool rastarizeGlyph(const Key &key, AtlasGlyph &glyph, hb_font_t *font, hb_face_t *face);
   void addPage();
 
 private:

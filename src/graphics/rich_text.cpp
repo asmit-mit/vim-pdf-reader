@@ -174,7 +174,7 @@ void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pe
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer_, &count);
     hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer_, &count);
 
-    FT_Face face = font_lib_.getFontFace(run.font_type, pixel_size_);
+    FT_Face ft_face = font_lib_.getFontFace(run.font_type, pixel_size_);
 
     for (unsigned int i = 0; i < count; ++i) {
       uint32_t glyph_idx = info[i].codepoint;
@@ -182,7 +182,8 @@ void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pe
       float y_offset = static_cast<float>(pos[i].y_offset >> 6);
       float x_adv = static_cast<float>(pos[i].x_advance >> 6);
 
-      const AtlasGlyph *glyph = atlas_.getOrPack(run.font_type, glyph_idx, pixel_size_, face);
+      const AtlasGlyph *glyph =
+          atlas_.getOrPack(run.font_type, glyph_idx, pixel_size_, ft_face, hb_font);
 
       if (glyph && glyph->uv.size != sf::Vector2f{0.f, 0.f}) {
         while (vertex_arrays_.size() <= glyph->page)

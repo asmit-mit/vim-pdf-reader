@@ -26,8 +26,8 @@ constexpr std::size_t thread_count_ = 5;
 constexpr char font_regular[] = "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Regular.ttf";
 constexpr char font_bold[] = "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Bold.ttf";
 constexpr char font_italic[] = "/home/asmitpaul/.local/share/fonts/JetBrainsMonoNerdFont-Italic.ttf";
-// constexpr char font_emoji[] = "/usr/share/fonts/google-noto-emoji-fonts/NotoEmoji-Regular.ttf";
-constexpr char font_emoji[] = "/home/asmitpaul/Downloads/NotoColorEmoji.ttf";
+constexpr char font_emoji[] = "/usr/share/fonts/google-noto-emoji-fonts/NotoEmoji-Regular.ttf";
+// constexpr char font_emoji[] = "/home/asmitpaul/Downloads/NotoColorEmoji.ttf";
 constexpr char font_cjk[] = "/usr/share/fonts/google-noto-sans-mono-cjk-vf-fonts/NotoSansMonoCJK-VF.ttc";
 
 } // namespace settings

@@ -4,7 +4,8 @@ project_name = meson.project_name()
 sfml_dep = dependency('sfml-graphics', required: true)
 mupdf_dep = dependency('mupdf', required: true)
 gtk_dep = dependency('gtk4', required: true)
-harfbuzz_dep = dependency('harfbuzz', required: true)
+harfbuzz_dep = dependency('harfbuzz', version: '>= 14.3.0', required: true)
+harfbuzz_raster_dep = dependency('harfbuzz-raster', version: '>= 14.3.0', required: true)
 freetype_dep = dependency('freetype2', required: true)
 
 utf8cpp_includes = include_directories('thirdparty/utfcpp/source')
@@ -23,20 +24,20 @@ sources = files(
   'src/pdf/pdf_page.cpp',
   'src/pdf/pdf_renderer.cpp',
   'src/ui/cmdline.cpp',
-  'src/ui/notifications.cpp',
+  'src/ui/completions.cpp',
   'src/ui/cursor.cpp',
-  'src/ui/statusbar.cpp',
+  'src/ui/notifications.cpp',
   'src/ui/page_view.cpp',
   'src/ui/pdf_view.cpp',
-  'src/ui/textbox.cpp',
-  'src/ui/completions.cpp',
   'src/ui/scrollwheel.cpp',
-  'src/utils/trie.cpp'
+  'src/ui/statusbar.cpp',
+  'src/ui/textbox.cpp',
+  'src/utils/trie.cpp',
 )
 
 executable(
   project_name,
   sources,
   include_directories: [includes, utf8cpp_includes],
-  dependencies: [sfml_dep, mupdf_dep, gtk_dep, harfbuzz_dep, freetype_dep],
+  dependencies: [sfml_dep, mupdf_dep, gtk_dep, harfbuzz_dep, harfbuzz_raster_dep, freetype_dep],
 )
