@@ -1,29 +1,31 @@
 #include "graphics/rich_text.h"
-#include "graphics/font_library.h"
 
 #include <iostream>
-#include <print>
 #include <stdexcept>
 
 namespace graphics {
 
-RichText::RichText(const graphics::FontLibrary &font_lib, uint32_t character_size)
-    : font_lib_(font_lib), hb_buffer_(hb_buffer_create()), hb_fonts_{}, size_{0.f, 0.f},
-      pixel_size_(character_size), text_color_(sf::Color::White), line_height_{} {
+RichText::RichText(
+    const graphics::FontLibrary &font_lib, GlyphAtlas &glyph_atlas, uint32_t character_size
+)
+    : font_lib_(font_lib), atlas_(glyph_atlas), hb_buffer_(hb_buffer_create()), hb_fonts_{},
+      size_{0.f, 0.f}, pixel_size_(character_size), text_color_(sf::Color::White), line_height_{} {
   if (!hb_buffer_allocation_successful(hb_buffer_))
     throw std::runtime_error("Failed to create hb_buffer");
 
-  for (std::size_t i = 0; i < hb_fonts_.size(); ++i) {
-    FontType type = static_cast<FontType>(i);
-    FT_Face face = font_lib_.getFontFace(type, pixel_size_);
-    if (!face)
-      continue;
-
-    hb_fonts_[i] = hb_ft_font_create_referenced(face);
-    if (!hb_fonts_[i])
-      throw std::runtime_error("Failed to create hb_font_t");
-  }
+  font_loaded_ = false;
+  default_font_type_ = FontType::Regular;
 }
+
+RichText::RichText(RichText &&other) noexcept
+    : font_lib_(other.font_lib_), atlas_(other.atlas_),
+      shaped_glyphs_(std::move(other.shaped_glyphs_)),
+      vertex_arrays_(std::move(other.vertex_arrays_)),
+      hb_buffer_(std::exchange(other.hb_buffer_, nullptr)),
+      hb_fonts_(std::exchange(other.hb_fonts_, {})), size_(other.size_),
+      pixel_size_(other.pixel_size_), text_color_(other.text_color_),
+      line_height_(other.line_height_), font_loaded_(other.font_loaded_),
+      default_font_type_(other.default_font_type_) {}
 
 RichText::~RichText() {
   for (hb_font_t *f : hb_fonts_) {
@@ -35,7 +37,9 @@ RichText::~RichText() {
 }
 
 void RichText::setString(const std::u32string &text) {
-  sprites_.clear();
+  text_ = text;
+
+  vertex_arrays_.clear();
   shaped_glyphs_.clear();
   size_ = {0.f, 0.f};
 
@@ -44,20 +48,17 @@ void RichText::setString(const std::u32string &text) {
     return;
   }
 
-  for (std::size_t i = 0; i < hb_fonts_.size(); ++i) {
-    if (!hb_fonts_[i]) {
-      FT_Face face = font_lib_.getFontFace(static_cast<FontType>(i), pixel_size_);
-      if (!face)
-        continue;
-      hb_fonts_[i] = hb_ft_font_create_referenced(face);
-    }
+  if (!font_loaded_) {
+    loadFonts();
+    font_loaded_ = true;
   }
 
   shapeAndCache(text);
 }
 
-void RichText::setColor(sf::Color color) {
+void RichText::setFillColor(sf::Color color) {
   text_color_ = color;
+  setString(text_);
 }
 
 void RichText::setCharacterSize(uint32_t size) {
@@ -65,8 +66,6 @@ void RichText::setCharacterSize(uint32_t size) {
     return;
 
   pixel_size_ = size;
-  glyph_cache_.clear();
-
   for (std::size_t i = 0; i < hb_fonts_.size(); ++i) {
     FontType type = static_cast<FontType>(i);
     FT_Face face = font_lib_.getFontFace(type, pixel_size_);
@@ -82,6 +81,14 @@ void RichText::setCharacterSize(uint32_t size) {
   }
 }
 
+void RichText::setBold() {
+  default_font_type_ = FontType::Bold;
+}
+
+void RichText::setItalic() {
+  default_font_type_ = FontType::Italic;
+}
+
 sf::Vector2f RichText::getSize() const {
   return size_;
 }
@@ -93,8 +100,24 @@ const std::vector<ShapedGlyph> &RichText::getShapedGlyphs() const {
 void RichText::draw(sf::RenderTarget &target, sf::RenderStates states) const {
   sf::RenderStates local = states;
   local.transform *= getTransform();
-  for (const sf::Sprite &sprite : sprites_)
-    target.draw(sprite, local);
+  for (std::size_t i = 0; i < vertex_arrays_.size(); ++i) {
+    const sf::Texture &tex = atlas_.texture(i);
+    local.texture = &tex;
+    target.draw(vertex_arrays_[i], local);
+  }
+}
+
+void RichText::loadFonts() {
+  for (std::size_t i = 0; i < hb_fonts_.size(); ++i) {
+    FontType type = static_cast<FontType>(i);
+    FT_Face face = font_lib_.getFontFace(type, pixel_size_);
+    if (!face)
+      continue;
+
+    hb_fonts_[i] = hb_ft_font_create_referenced(face);
+    if (!hb_fonts_[i])
+      throw std::runtime_error("Failed to create hb_font_t");
+  }
 }
 
 void RichText::createTextRuns(const std::u32string &text, std::vector<Run> &runs) {
@@ -102,7 +125,7 @@ void RichText::createTextRuns(const std::u32string &text, std::vector<Run> &runs
     return;
 
   uint32_t first = static_cast<uint32_t>(text[0]);
-  graphics::FontType type = font_lib_.getFontTypeForCodepoint(first);
+  graphics::FontType type = font_lib_.getFontTypeForCodepoint(first, default_font_type_);
   std::u32string curr(1, text[0]);
 
   for (std::size_t i = 1; i < text.size(); i++) {
@@ -112,7 +135,7 @@ void RichText::createTextRuns(const std::u32string &text, std::vector<Run> &runs
       continue;
     }
 
-    graphics::FontType new_type = font_lib_.getFontTypeForCodepoint(codepoint);
+    graphics::FontType new_type = font_lib_.getFontTypeForCodepoint(codepoint, default_font_type_);
     if (new_type == type) {
       curr += text[i];
       continue;
@@ -128,101 +151,6 @@ void RichText::createTextRuns(const std::u32string &text, std::vector<Run> &runs
     runs.push_back({curr, type});
 }
 
-const CachedGlyph *RichText::getOrRenderGlyph(FontType font_type, uint32_t glyph_idx) {
-  GlyphKey key{font_type, glyph_idx, pixel_size_};
-
-  auto it = glyph_cache_.find(key);
-  if (it != glyph_cache_.end())
-    return &it->second;
-
-  FT_Face face = font_lib_.getFontFace(font_type, pixel_size_);
-  if (!face)
-    return nullptr;
-
-  if (FT_Load_Glyph(face, glyph_idx, FT_LOAD_COLOR | FT_LOAD_RENDER) != 0)
-    return nullptr;
-
-  FT_GlyphSlot slot = face->glyph;
-  FT_Bitmap &bitmap = slot->bitmap;
-
-  CachedGlyph glyph;
-  glyph.bearing_x = slot->bitmap_left;
-  glyph.bearing_y = slot->bitmap_top;
-  glyph.advance = slot->advance.x >> 6;
-  glyph.is_color = (bitmap.pixel_mode == FT_PIXEL_MODE_BGRA);
-
-  unsigned int width = bitmap.width;
-  unsigned int height = bitmap.rows;
-
-  if (width == 0 || height == 0) {
-    auto [ins, _] = glyph_cache_.emplace(key, std::move(glyph));
-    return &ins->second;
-  }
-
-  sf::Image img({width, height}, sf::Color::Transparent);
-  const uint8_t *src = bitmap.buffer;
-  int pitch = std::abs(bitmap.pitch);
-
-  if (bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) {
-    for (unsigned int y = 0; y < height; ++y) {
-      const uint8_t *row = src + static_cast<std::ptrdiff_t>(y) * pitch;
-      for (unsigned int x = 0; x < width; ++x) {
-        uint8_t b = row[x * 4 + 0];
-        uint8_t g = row[x * 4 + 1];
-        uint8_t r = row[x * 4 + 2];
-        uint8_t a = row[x * 4 + 3];
-
-        if (a != 0 && a != 255) {
-          r = static_cast<uint8_t>(std::min(255u, static_cast<uint32_t>(r) * 255u / a));
-          g = static_cast<uint8_t>(std::min(255u, static_cast<uint32_t>(g) * 255u / a));
-          b = static_cast<uint8_t>(std::min(255u, static_cast<uint32_t>(b) * 255u / a));
-        }
-
-        img.setPixel({x, y}, sf::Color(r, g, b, a));
-      }
-    }
-
-  } else if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY) {
-    for (unsigned int y = 0; y < height; ++y) {
-      const uint8_t *row = src + static_cast<std::ptrdiff_t>(y) * pitch;
-      for (unsigned int x = 0; x < width; ++x)
-        img.setPixel({x, y}, sf::Color(255, 255, 255, row[x]));
-    }
-
-  } else if (bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
-    for (unsigned int y = 0; y < height; ++y) {
-      const uint8_t *row = src + static_cast<std::ptrdiff_t>(y) * pitch;
-      for (unsigned int x = 0; x < width; ++x) {
-        uint8_t alpha = (row[x / 8] & (0x80u >> (x & 7u))) ? 255u : 0u;
-        img.setPixel({x, y}, sf::Color(255, 255, 255, alpha));
-      }
-    }
-
-  } else {
-    std::cerr << "Warning: unsupported pixel mode " << bitmap.pixel_mode << " for glyph "
-              << glyph_idx << "\n";
-    auto [ins, _] = glyph_cache_.emplace(key, std::move(glyph));
-    return &ins->second;
-  }
-
-  if (!glyph.texture.loadFromImage(img))
-    std::cerr << "Warning: failed to upload glyph " << glyph_idx << " to GPU\n";
-  else
-    glyph.texture.setSmooth(true);
-
-  if (font_type == Emoji && glyph.is_color) {
-    float scale = static_cast<float>(pixel_size_) / static_cast<float>(height);
-    glyph.texture.setSmooth(true);
-    glyph.bearing_x = static_cast<int>(glyph.bearing_x * scale);
-    glyph.bearing_y = static_cast<int>(glyph.bearing_y * scale);
-    glyph.advance = static_cast<long>(pixel_size_);
-    glyph.scale = scale;
-  }
-
-  auto [ins, _] = glyph_cache_.emplace(key, std::move(glyph));
-  return &ins->second;
-}
-
 void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pen_y) {
   for (const Run &run : runs) {
     hb_font_t *hb_font = hb_fonts_[run.font_type];
@@ -233,7 +161,6 @@ void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pe
     hb_buffer_set_direction(hb_buffer_, HB_DIRECTION_LTR);
     hb_buffer_set_script(hb_buffer_, HB_SCRIPT_COMMON);
     hb_buffer_set_language(hb_buffer_, hb_language_from_string("en", -1));
-
     hb_buffer_add_utf32(
         hb_buffer_,
         reinterpret_cast<const uint32_t *>(run.codepoints.data()),
@@ -241,36 +168,60 @@ void RichText::processLine(const std::vector<Run> &runs, float &pen_x, float &pe
         0,
         static_cast<int>(run.codepoints.size())
     );
-
     hb_shape(hb_font, hb_buffer_, nullptr, 0);
 
     unsigned int count = 0;
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer_, &count);
     hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer_, &count);
 
+    FT_Face face = font_lib_.getFontFace(run.font_type, pixel_size_);
+
     for (unsigned int i = 0; i < count; ++i) {
       uint32_t glyph_idx = info[i].codepoint;
-
       float x_offset = static_cast<float>(pos[i].x_offset >> 6);
       float y_offset = static_cast<float>(pos[i].y_offset >> 6);
       float x_adv = static_cast<float>(pos[i].x_advance >> 6);
 
-      const CachedGlyph *glyph = getOrRenderGlyph(run.font_type, glyph_idx);
-      if (glyph) {
-        sf::Sprite sprite(glyph->texture);
-        sprite.setPosition(
-            {pen_x + x_offset + static_cast<float>(glyph->bearing_x),
-             pen_y - y_offset - static_cast<float>(glyph->bearing_y)}
-        );
-        sprite.setColor(glyph->is_color ? sf::Color::White : text_color_);
-        sprite.setScale({glyph->scale, glyph->scale});
+      const AtlasGlyph *glyph = atlas_.getOrPack(run.font_type, glyph_idx, pixel_size_, face);
 
-        sprites_.push_back(sprite);
+      if (glyph && glyph->uv.size != sf::Vector2f{0.f, 0.f}) {
+        while (vertex_arrays_.size() <= glyph->page)
+          vertex_arrays_.emplace_back(sf::PrimitiveType::Triangles);
+
+        sf::Color color = glyph->is_color ? sf::Color::White : text_color_;
+        auto &va = vertex_arrays_[glyph->page];
+
+        float x = pen_x + x_offset + static_cast<float>(glyph->bearing_x);
+        float y = pen_y - y_offset - static_cast<float>(glyph->bearing_y);
+        float w = glyph->uv.size.x * static_cast<float>(atlas_.width()) * glyph->scale;
+        float h = glyph->uv.size.y * static_cast<float>(atlas_.height()) * glyph->scale;
+
+        float u = glyph->uv.position.x * static_cast<float>(atlas_.width());
+        float v = glyph->uv.position.y * static_cast<float>(atlas_.height());
+        float uw = glyph->uv.size.x * static_cast<float>(atlas_.width());
+        float uh = glyph->uv.size.y * static_cast<float>(atlas_.height());
+
+        sf::Vector2f p0{x, y};
+        sf::Vector2f p1{x + w, y};
+        sf::Vector2f p2{x + w, y + h};
+        sf::Vector2f p3{x, y + h};
+
+        sf::Vector2f uv0{u, v};
+        sf::Vector2f uv1{u + uw, v};
+        sf::Vector2f uv2{u + uw, v + uh};
+        sf::Vector2f uv3{u, v + uh};
+
+        va.append({p0, color, uv0});
+        va.append({p1, color, uv1});
+        va.append({p2, color, uv2});
+        va.append({p0, color, uv0});
+        va.append({p2, color, uv2});
+        va.append({p3, color, uv3});
       }
 
-      long shaped_adv = (glyph && glyph->is_color) ? glyph->advance : static_cast<long>(x_adv);
-      shaped_glyphs_.push_back({{pen_x, pen_y}, shaped_adv});
-      pen_x += (glyph && glyph->is_color) ? static_cast<float>(glyph->advance) : x_adv;
+      long adv = (glyph && glyph->is_color) ? glyph->advance : static_cast<long>(x_adv);
+      shaped_glyphs_.push_back({{pen_x, pen_y}, adv});
+      pen_x += glyph ? (glyph->is_color ? static_cast<float>(glyph->advance) : x_adv) : x_adv;
     }
   }
 }
@@ -279,7 +230,7 @@ void RichText::shapeAndCache(const std::u32string &text) {
   if (font_lib_.empty() || text.empty())
     return;
 
-  FT_Face latin_face = font_lib_.getFontFace(graphics::FontType::Latin, pixel_size_);
+  FT_Face latin_face = font_lib_.getFontFace(graphics::FontType::Regular, pixel_size_);
   float ascender = static_cast<float>(latin_face->size->metrics.ascender >> 6);
   float descender = static_cast<float>(latin_face->size->metrics.descender >> 6);
   float line_gap = static_cast<float>(latin_face->size->metrics.height >> 6);

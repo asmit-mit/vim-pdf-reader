@@ -29,7 +29,7 @@ std::vector<std::string> Trie::complete(const std::string &prefix) const {
 
   for (char c : prefix) {
     int idx = tolower(c) - 'a';
-    if (!node->children[idx])
+    if ((idx < 0 || idx >= 26) || !node->children[idx])
       return {};
     node = node->children[idx];
   }

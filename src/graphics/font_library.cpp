@@ -34,7 +34,7 @@ void FontLibrary::tryLoadFont(FontType type, const char *path) {
   FT_Face face = nullptr;
 
   if (FT_New_Face(library_, path, 0, &face) != 0) {
-    if (type == FontType::Latin)
+    if (type == FontType::Regular)
       throw std::runtime_error(std::string("Failed to load latin font: ") + path);
     std::cerr << "Warning: could not load " << path << " — skipping\n";
     return;
@@ -49,14 +49,20 @@ void FontLibrary::tryLoadFont(FontType type, const char *path) {
   is_empty_ = false;
 }
 
-FontType FontLibrary::getFontTypeForCodepoint(uint32_t codepoint) const {
-  if (fonts_[FontType::Latin] && FT_Get_Char_Index(fonts_[FontType::Latin], codepoint) != 0)
-    return FontType::Latin;
+FontType FontLibrary::getFontTypeForCodepoint(uint32_t codepoint, FontType default_type) const {
+  if (fonts_[default_type]) {
+    if (FT_Get_Char_Index(fonts_[default_type], codepoint) != 0)
+      return default_type;
+  } else {
+    if (fonts_[FontType::Regular] && FT_Get_Char_Index(fonts_[FontType::Regular], codepoint) != 0)
+      return FontType::Regular;
+  }
+
   if (fonts_[FontType::Emoji] && FT_Get_Char_Index(fonts_[FontType::Emoji], codepoint) != 0)
     return FontType::Emoji;
   if (fonts_[FontType::CJK] && FT_Get_Char_Index(fonts_[FontType::CJK], codepoint) != 0)
     return FontType::CJK;
-  return FontType::Latin;
+  return FontType::Regular;
 }
 
 FT_Face FontLibrary::getFontFace(FontType type, uint32_t pixel_size) const {

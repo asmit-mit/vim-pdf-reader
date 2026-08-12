@@ -7,7 +7,7 @@
 #include "core/history_manager.h"
 #include "core/render_scheduler.h"
 #include "graphics/font_library.h"
-#include "graphics/rich_text.h"
+#include "graphics/glyph_atlas.h"
 #include "ui/cmdline.h"
 #include "ui/notifications.h"
 #include "ui/pdf_view.h"
@@ -34,6 +34,7 @@ private:
   sf::Font font_italic_;
 
   graphics::FontLibrary font_library_;
+  graphics::GlyphAtlas glyph_atlas_;
 
   pdf::PDFDocument document_;
   pdf::PDFRenderer renderer_;
@@ -45,6 +46,9 @@ private:
   core::HistoryManager file_history_;
   core::HistoryManager notification_history_;
   core::RenderScheduler render_scheduler_;
+
+  ui::Textbox cmdline_textbox_;
+  ui::Completions cmdline_completions_;
 
   ui::Cmdline cmdline_;
   ui::PDFView pdf_view_;

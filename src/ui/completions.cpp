@@ -1,21 +1,33 @@
 #include "ui/completions.h"
+
+#include <utf8.h>
+
 #include "utils/settings.h"
 #include "utils/utils.h"
 
 namespace ui {
 
-Completions::Completions(const sf::Font &cmd_font, const sf::Font &desc_font, int font_size)
+Completions::Completions(
+    const graphics::FontLibrary &font_lib,
+    graphics::GlyphAtlas &glyph_atlas,
+    const sf::Font &cmd_font,
+    const sf::Font &desc_font,
+    int font_size
+)
     : cmd_font_(cmd_font), desc_font_(desc_font) {
   list_dirty_ = false;
   visible_ = false;
   first_visible_ = 0;
   selected_ = 0;
+
   display_area_.setFillColor(utils::hexToRGB(settings::status_bg_));
   selected_cmd_area_.setFillColor(utils::hexToRGB(settings::completion_highlight_bg_));
   selected_desc_area_.setFillColor(utils::hexToRGB(settings::completion_highlight_bg_));
+
   for (std::size_t i = 0; i < max_list_items_; i++) {
-    display_cmd_list_.emplace_back(sf::Text(cmd_font_, "", font_size));
-    display_desc_list_.emplace_back(sf::Text(desc_font_, "", font_size));
+    display_cmd_list_.emplace_back(font_lib, glyph_atlas, font_size);
+    display_cmd_list_[i].setBold();
+    display_desc_list_.emplace_back(desc_font_, "", font_size);
   }
 }
 
@@ -46,7 +58,7 @@ void Completions::update() {
   if (list_dirty_) {
     std::size_t row = 0;
     for (std::size_t i = first_visible_; i < last; ++i, ++row) {
-      display_cmd_list_[row].setString(completions_[i].first);
+      display_cmd_list_[row].setString(utf8::utf8to32(completions_[i].first));
       display_desc_list_[row].setString(completions_[i].second);
     }
 
@@ -64,13 +76,14 @@ void Completions::update() {
     );
     display_desc_list_[row].setFillColor(desc_fg_color_);
   }
+  display_area_.setSize({window_size_.x, row * utils::cmdline_height_});
 
   const std::size_t selected_row = selected_ - first_visible_;
   selected_cmd_area_.setPosition(
       {utils::padding - 2.f, display_cmd_list_[selected_row].getPosition().y}
   );
   selected_cmd_area_.setSize(
-      {display_cmd_list_[selected_row].getGlobalBounds().size.x + 6.f, utils::cmdline_height_}
+      {display_cmd_list_[selected_row].getSize().x + 6.f, utils::cmdline_height_}
   );
 
   selected_desc_area_.setPosition(

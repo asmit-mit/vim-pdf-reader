@@ -5,10 +5,13 @@
 namespace ui {
 
 Textbox::Textbox(
-    const graphics::FontLibrary &font_lib, int char_size, const std::string &input_string
+    const graphics::FontLibrary &font_lib,
+    graphics::GlyphAtlas &glyph_atlas,
+    int char_size,
+    const std::string &input_string
 )
-    : font_library_(font_lib), display_text_(font_lib, char_size),
-      display_text_selected_(font_lib, char_size) {
+    : font_library_(font_lib), display_text_(font_lib, glyph_atlas, char_size),
+      display_text_selected_(font_lib, glyph_atlas, char_size) {
   visible_ = false;
   editing_ = false;
   text_dirty_ = false;
@@ -18,8 +21,8 @@ Textbox::Textbox(
 
   selection_box_.setFillColor(utils::hexToRGB(settings::textbox_highlight_fg_));
 
-  display_text_.setColor(utils::hexToRGB(settings::fg_));
-  display_text_selected_.setColor(utils::hexToRGB(settings::cmd_bg_));
+  display_text_.setFillColor(utils::hexToRGB(settings::fg_));
+  display_text_selected_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
 
   cursor_size_ = {0.f, 0.f};
   pos_ = {0.f, 0.f};

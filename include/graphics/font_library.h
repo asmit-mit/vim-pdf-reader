@@ -11,9 +11,11 @@
 namespace graphics {
 
 enum FontType : int {
-  Latin = 0,
-  Emoji = 1,
-  CJK = 2,
+  Regular = 0,
+  Bold = 1,
+  Italic = 2,
+  Emoji = 3,
+  CJK = 4,
 };
 
 class FontLibrary {
@@ -29,7 +31,7 @@ public:
   ~FontLibrary();
 
   void tryLoadFont(FontType type, const char *path);
-  FontType getFontTypeForCodepoint(uint32_t codepoint) const;
+  FontType getFontTypeForCodepoint(uint32_t codepoint, FontType default_type = FontType::Regular) const;
 
   FT_Face getFontFace(FontType type, uint32_t pixel_size) const;
 
@@ -67,8 +69,8 @@ private:
   FT_Library library_;
 
   mutable std::unordered_map<FontKey, FT_Face, FontKeyHash> cache_;
-  std::array<FT_Face, 3> fonts_;
-  std::array<const char *, 3> fonts_paths_;
+  std::array<FT_Face, 5> fonts_;
+  std::array<const char *, 5> fonts_paths_;
 
   bool is_empty_;
 };

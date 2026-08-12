@@ -9,19 +9,17 @@
 namespace ui {
 
 Cmdline::Cmdline(
-    const graphics::FontLibrary &font_lib,
     const sf::Font &font_normal,
-    const sf::Font &font_bold,
-    const sf::Font &font_italic,
     core::EventBus &event_bus,
     core::CmdProcessor &cmd_processor,
     core::HistoryManager &cmd_history,
-    core::HistoryManager &search_history
+    core::HistoryManager &search_history,
+    ui::Textbox &textbox,
+    ui::Completions &completions
 )
     : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history),
       search_history_(search_history), font_(font_normal),
-      label_(font_normal, ":", utils::char_size), textbox_(font_lib, utils::char_size, ":"),
-      completions_(font_bold, font_italic, utils::char_size) {
+      label_(font_normal, ":", utils::char_size), textbox_(textbox), completions_(completions) {
   visible_ = false;
 
   textbox_.setCursorSize({2.f, 24.f});
@@ -29,7 +27,7 @@ Cmdline::Cmdline(
   label_.setFillColor(utils::hexToRGB(settings::fg_));
 
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
-  display_area_.setSize({200.0, utils::cmdline_height_});
+  display_area_.setSize({200.f, utils::cmdline_height_});
 
   completions_.setCmdColor(utils::hexToRGB(settings::fg_));
   completions_.setDescColor(utils::hexToRGB(settings::completions_desc_fg_));

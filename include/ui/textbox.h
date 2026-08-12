@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics/font_library.h"
 #include "graphics/rich_text.h"
 #include "ui/cursor.h"
 #include "ui/widget.h"
@@ -10,7 +9,10 @@ namespace ui {
 class Textbox : public Widget {
 public:
   explicit Textbox(
-      const graphics::FontLibrary &font_lib, int char_size, const std::string &input_string
+      const graphics::FontLibrary &font_lib,
+      graphics::GlyphAtlas &glyph_atlas,
+      int char_size,
+      const std::string &input_string
   );
 
   void draw(sf::RenderTarget &window) const override;

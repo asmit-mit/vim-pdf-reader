@@ -2,7 +2,6 @@
 
 #include "core/event_bus.h"
 #include "core/history_manager.h"
-#include "graphics/font_library.h"
 #include "graphics/rich_text.h"
 #include "ui/widget.h"
 
@@ -12,6 +11,7 @@ class Notifications : public Widget {
 public:
   explicit Notifications(
       const graphics::FontLibrary &font_lib,
+      graphics::GlyphAtlas &glyph_atlas,
       const sf::Font &font_normal,
       const sf::Font &font_bold,
       core::HistoryManager &notification_history,

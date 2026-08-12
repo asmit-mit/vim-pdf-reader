@@ -8,6 +8,7 @@ namespace ui {
 
 Notifications::Notifications(
     const graphics::FontLibrary &font_lib,
+    graphics::GlyphAtlas &glyph_atlas,
     const sf::Font &font_normal,
     const sf::Font &font_bold,
     core::HistoryManager &notification_history,
@@ -16,11 +17,11 @@ Notifications::Notifications(
     : event_bus_(event_bus), history_(notification_history), font_library_(font_lib),
       font_normal_(font_normal), font_bold_(font_bold),
       display_header_(font_bold, "Notification", utils::char_size + 2),
-      display_msg_(font_lib, utils::char_size) {
+      display_msg_(font_lib, glyph_atlas, utils::char_size) {
   visible_ = false;
   hovered_ = false;
 
-  display_msg_.setColor(utils::hexToRGB(settings::fg_));
+  display_msg_.setFillColor(utils::hexToRGB(settings::fg_));
   display_header_.setFillColor(utils::hexToRGB(settings::fg_));
 
   display_area_.setFillColor(utils::hexToRGB(settings::bg_));
@@ -98,22 +99,16 @@ std::u32string Notifications::wrapText(
   if (!current.empty())
     tokens.push_back(current);
 
-  // --- Measurement probe ---
   sf::Text probe(font, "", char_size);
   auto line_width = [&](const std::u32string &s) -> float {
     probe.setString(sf::String(s));
     return probe.getLocalBounds().size.x;
   };
 
-  // --- Helpers ---
   std::u32string line, result;
 
   auto flushLine = [&](const std::u32string &l) { result += l + U'\n'; };
 
-  // Binary-search for the longest prefix of `word` (with optional `prefix`
-  // prepended and a '-' appended) that still fits in max_width.
-  // Returns the number of chars consumed from `word`, or 0 if even one char
-  // doesn't fit (caller must handle that degenerate case).
   auto fitPrefix = [&](const std::u32string &prefix, const std::u32string &word) -> std::size_t {
     std::size_t lo = 1, hi = word.size(), best = 0;
     while (lo <= hi) {
@@ -129,8 +124,6 @@ std::u32string Notifications::wrapText(
     return best;
   };
 
-  // Hyphenate `word` onto the current `line`, flushing as many full lines as
-  // needed.  The prefix for the first segment is `line + ' '` (or empty).
   auto hyphenateWord = [&](const std::u32string &word) {
     std::u32string remaining = word;
     bool first = true;
@@ -139,7 +132,6 @@ std::u32string Notifications::wrapText(
       std::u32string prefix = (first && !line.empty()) ? line + U' ' : U"";
       first = false;
 
-      // Try fitting the whole remaining chunk without a hyphen.
       if (line_width(prefix + remaining) <= max_width) {
         line = prefix + remaining;
         return;
@@ -147,15 +139,12 @@ std::u32string Notifications::wrapText(
 
       std::size_t n = fitPrefix(prefix, remaining);
       if (n == 0) {
-        // Even a single char + '-' doesn't fit.  Flush whatever is on `line`
-        // and retry with an empty prefix — if it still can't fit one char,
-        // just force it (avoid infinite loop).
         if (!line.empty()) {
           flushLine(line);
           line = U"";
           continue;
         }
-        // Force at least one character so we always make progress.
+
         n = 1;
       }
 
@@ -165,16 +154,14 @@ std::u32string Notifications::wrapText(
     }
   };
 
-  // --- Main loop ---
   for (const std::u32string &word : tokens) {
     std::u32string candidate = line.empty() ? word : line + U' ' + word;
-    if (line_width(candidate) <= max_width) {
+    if (line_width(candidate) <= max_width)
       line = candidate;
-    } else {
-      // Word doesn't fit on the current line — try hyphenating.
+    else
       hyphenateWord(word);
-    }
   }
+
   if (!line.empty())
     result += line;
   return result;

@@ -16,6 +16,7 @@ sources = files(
   'src/core/history_manager.cpp',
   'src/core/render_scheduler.cpp',
   'src/graphics/font_library.cpp',
+  'src/graphics/glyph_atlas.cpp',
   'src/graphics/rich_text.cpp',
   'src/main.cpp',
   'src/pdf/pdf_document.cpp',

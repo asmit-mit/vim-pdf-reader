@@ -12,17 +12,24 @@ App::App()
       font_italic_(settings::font_italic), document_(), renderer_(),
       cmd_processor_(event_bus_, cmd_history_, search_history_, file_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
-      cmdline_(font_library_, font_regular_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_, search_history_),
+      cmdline_textbox_(font_library_, glyph_atlas_, utils::char_size, ":"),
+      cmdline_completions_(font_library_, glyph_atlas_, font_regular_, font_italic_, utils::char_size),
+      cmdline_(font_regular_, event_bus_, cmd_processor_, cmd_history_, search_history_, cmdline_textbox_, cmdline_completions_),
       pdf_view_(document_, render_scheduler_, event_bus_), statusbar_(font_regular_, event_bus_),
-      notifications_(font_library_, font_regular_, font_bold_, notification_history_, event_bus_) {
-
+      notifications_(font_library_, glyph_atlas_, font_regular_, font_bold_, notification_history_, event_bus_) {
   initHistory();
   initWindow();
   initApps();
 
-  font_library_.tryLoadFont(graphics::FontType::Latin, settings::font_regular);
+  font_library_.tryLoadFont(graphics::FontType::Regular, settings::font_regular);
+  font_library_.tryLoadFont(graphics::FontType::Bold, settings::font_bold);
+  font_library_.tryLoadFont(graphics::FontType::Italic, settings::font_italic);
   font_library_.tryLoadFont(graphics::FontType::Emoji, settings::font_emoji);
   font_library_.tryLoadFont(graphics::FontType::CJK, settings::font_cjk);
+
+  font_regular_.setSmooth(false);
+  font_bold_.setSmooth(false);
+  font_italic_.setSmooth(false);
 
   event_bus_.subscribe<bool>("cmd.quit", [this](bool close) {
     renderer_.clearCache();
