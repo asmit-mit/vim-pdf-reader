@@ -1,5 +1,5 @@
-#include <print>
 #include <stdexcept>
+#include <utf8.h>
 
 #include "ui/cmdline.h"
 #include "ui/ui_elements.h"
@@ -10,33 +10,30 @@ namespace ui {
 
 Cmdline::Cmdline(
     const sf::Font &font_normal,
-    const sf::Font &font_bold,
-    const sf::Font &font_italic,
     core::EventBus &event_bus,
     core::CmdProcessor &cmd_processor,
     core::HistoryManager &cmd_history,
-    core::HistoryManager &search_history
+    core::HistoryManager &search_history,
+    ui::Textbox &textbox,
+    ui::Completions &completions
 )
     : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history),
       search_history_(search_history), font_(font_normal),
-      label_(font_normal, ":", utils::char_size), textbox_(font_, utils::char_size, ":"),
-      completions_(font_bold, font_italic, utils::char_size) {
+      label_(font_normal, ":", utils::char_size), textbox_(textbox), completions_(completions) {
   visible_ = false;
-  ignore_next_text_entered_ = false;
 
   textbox_.setCursorSize({2.f, 24.f});
 
   label_.setFillColor(utils::hexToRGB(settings::fg_));
 
   display_area_.setFillColor(utils::hexToRGB(settings::cmd_bg_));
-  display_area_.setSize({200.0, utils::cmdline_height_});
+  display_area_.setSize({200.f, utils::cmdline_height_});
 
   completions_.setCmdColor(utils::hexToRGB(settings::fg_));
   completions_.setDescColor(utils::hexToRGB(settings::completions_desc_fg_));
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     visible_ = focus == ui::UIElements::Cmdline;
-    ignore_next_text_entered_ = visible_;
     if (visible_) {
       textbox_.reset();
       textbox_.startEditing();
@@ -72,13 +69,6 @@ void Cmdline::handleEvent(const sf::Event &event) {
       return;
   }
 
-  if (ignore_next_text_entered_) {
-    if (event.is<sf::Event::TextEntered>()) {
-      ignore_next_text_entered_ = false;
-      return;
-    }
-  }
-
   const auto *key = event.getIf<sf::Event::KeyPressed>();
 
   if (mode_ == CmdlineMode::Cmd) {
@@ -106,9 +96,9 @@ void Cmdline::handleEvent(const sf::Event &event) {
       } else if (key->code == sf::Keyboard::Key::Enter) {
         cmd_history_.add(textbox_.getText());
         try {
-          cmd_processor_.runCommand(textbox_.getText());
+          cmd_processor_.runCommand(utf8::utf32to8(textbox_.getText()));
         } catch (const std::runtime_error &e) {
-          event_bus_.emit("notification.msg", e.what());
+          event_bus_.emit("notification.msg", utf8::utf8to32(std::string(e.what())));
         }
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         reset();
@@ -125,7 +115,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
             completions_.moveUp();
           else
             completions_.moveDown();
-          textbox_.setText(completions_.getSelectedText());
+          textbox_.setText(utf8::utf8to32(completions_.getSelectedText()));
         }
         return;
       }
@@ -135,8 +125,8 @@ void Cmdline::handleEvent(const sf::Event &event) {
       if (key->code == sf::Keyboard::Key::Escape) {
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::Enter) {
-        std::println("Text to search for: {}", textbox_.getText());
         search_history_.add(textbox_.getText());
+        event_bus_.emit("cmd.search", textbox_.getText());
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::P && key->control) {
         textbox_.setText(search_history_.getPrevious());
@@ -198,7 +188,7 @@ void Cmdline::reset() {
 }
 
 void Cmdline::refreshCompletions() {
-  const auto &list = cmd_processor_.complete(original_string_);
+  const auto &list = cmd_processor_.complete(utf8::utf32to8(original_string_));
 
   if (list.empty()) {
     completions_.clear();
@@ -207,7 +197,7 @@ void Cmdline::refreshCompletions() {
   }
 
   if (list.size() == 1) {
-    textbox_.setText(list[0].first);
+    textbox_.setText(utf8::utf8to32(list[0].first));
     completions_.clear();
     completions_.hide();
     return;
@@ -215,7 +205,7 @@ void Cmdline::refreshCompletions() {
 
   completions_.setCompletionList(list);
   completions_.show();
-  textbox_.setText(completions_.getSelectedText());
+  textbox_.setText(utf8::utf8to32(completions_.getSelectedText()));
 }
 
 } // namespace ui

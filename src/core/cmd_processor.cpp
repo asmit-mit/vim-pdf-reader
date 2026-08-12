@@ -1,5 +1,6 @@
 #include <sstream>
 #include <stdexcept>
+#include <utf8.h>
 #include <vector>
 
 #include "core/cmd_processor.h"
@@ -42,7 +43,7 @@ void CmdProcessor::runCommand(const std::string &cmd) {
     argv.push_back(arg);
 
   if (utils::isNumber(argv[0])) {
-    event_bus_.emit("cmd_processor.switch_page", std::stoi(argv[0]));
+    event_bus_.emit("cmd.switch_page", std::stoi(argv[0]));
     return;
   }
 
@@ -58,8 +59,8 @@ void CmdProcessor::runCommand(const std::string &cmd) {
 
   if (argv[0] == "open") {
     try {
-      event_bus_.emit("cmd_processor.open_document", argv[1]);
-      file_history_.add(argv[1]);
+      event_bus_.emit("cmd.open_document", argv[1]);
+      file_history_.add(utf8::utf8to32(argv[1]));
     } catch (const std::runtime_error &e) {
       throw e;
     }
@@ -73,11 +74,11 @@ void CmdProcessor::runCommand(const std::string &cmd) {
       cmd_history_.clear();
   }
   if (argv[0] == "close")
-    event_bus_.emit("cmd_processor.close_document", true);
+    event_bus_.emit("cmd.close_document", true);
   if (argv[0] == "reload")
-    event_bus_.emit("cmd_processor.reload_document", true);
+    event_bus_.emit("cmd.reload_document", true);
   if (argv[0] == "quit")
-    event_bus_.emit("cmd_processor.quit", true);
+    event_bus_.emit("cmd.quit", true);
 }
 
 std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const std::string &input) {
@@ -107,7 +108,7 @@ std::vector<std::pair<std::string, std::string>> CmdProcessor::complete(const st
   if (cmd == "open") {
     std::vector<std::pair<std::string, std::string>> result;
     for (const auto &file : file_history_.getAllUnique())
-      result.emplace_back("open " + file, "");
+      result.emplace_back("open " + utf8::utf32to8(file), "");
     return result;
   }
 

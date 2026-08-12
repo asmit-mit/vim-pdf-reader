@@ -9,6 +9,8 @@ PDFDocument::PDFDocument() {
   locks_.lock = &PDFDocument::lockMutex;
   locks_.unlock = &PDFDocument::unlockMutex;
 
+  all_content_loaded_ = false;
+
   ctx_ = fz_new_context(nullptr, &locks_, FZ_STORE_DEFAULT);
   if (!ctx_)
     throw std::runtime_error("Failed to create MuPDF context");
@@ -41,18 +43,25 @@ void PDFDocument::openDocument(const std::string &filepath) {
   page_with_max_width_ = 0;
 
   pages_.reserve(page_count);
-  for (int i = 0; i < page_count; i++) {
-    fz_page *page = fz_load_page(ctx_, doc_, i);
-    fz_rect bounds = fz_bound_page(ctx_, page);
-    // fz_stext_page *text = fz_new_stext_page_from_page(ctx_, page, NULL);
+  for (int i = 0; i < page_count; ++i) {
+    fz_page *page = nullptr;
 
-    int width = std::abs(bounds.x0 - bounds.x1);
-    if (width > max_width) {
-      page_with_max_width_ = i;
-      max_width = width;
+    fz_try(ctx_) {
+      page = fz_load_page(ctx_, doc_, i);
+
+      fz_rect bounds = fz_bound_page(ctx_, page);
+
+      int width = static_cast<int>(std::abs(bounds.x1 - bounds.x0));
+
+      if (width > max_width) {
+        max_width = width;
+        page_with_max_width_ = i;
+      }
+
+      pages_.emplace_back(i, bounds);
     }
-
-    pages_.emplace_back(ctx_, i, bounds, nullptr);
+    fz_always(ctx_) fz_drop_page(ctx_, page);
+    fz_catch(ctx_) throw std::runtime_error("Failed to inspect PDF page");
   }
 }
 
@@ -73,6 +82,29 @@ std::size_t PDFDocument::pageWithMaxWidth() const {
 
 PDFPage &PDFDocument::getPage(std::size_t page_idx) {
   return pages_[page_idx];
+}
+
+bool PDFDocument::isAllContentLoaded() {
+  return all_content_loaded_;
+}
+
+void PDFDocument::loadAllContent() {
+  if (!doc_)
+    return;
+
+  for (std::size_t i = 0; i < pages_.size(); i++)
+    loadPageContent(i);
+  all_content_loaded_ = true;
+}
+
+void PDFDocument::loadPageContent(std::size_t idx) {
+  fz_stext_page *text = nullptr;
+  fz_try(ctx_) {
+    text = fz_new_stext_page_from_page_number(ctx_, doc_, idx, nullptr);
+    pages_[idx].loadContent(text);
+  }
+  fz_always(ctx_) fz_drop_stext_page(ctx_, text);
+  fz_catch(ctx_) throw std::runtime_error("Failed to load text from page");
 }
 
 std::size_t PDFDocument::size() const {

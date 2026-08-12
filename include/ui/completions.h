@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/rich_text.h"
 #include "ui/widget.h"
 
 #include <SFML/Graphics.hpp>
@@ -8,7 +9,13 @@ namespace ui {
 
 class Completions : public Widget {
 public:
-  explicit Completions(const sf::Font &cmd_font, const sf::Font &desc_font, int font_size);
+  explicit Completions(
+      const graphics::FontLibrary &font_lib,
+      graphics::GlyphAtlas &glyph_atlas,
+      const sf::Font &cmd_font,
+      const sf::Font &desc_font,
+      int font_size
+  );
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
@@ -32,7 +39,7 @@ public:
 
 private:
   std::vector<std::pair<std::string, std::string>> completions_;
-  std::vector<sf::Text> display_cmd_list_;
+  std::vector<graphics::RichText> display_cmd_list_;
   std::vector<sf::Text> display_desc_list_;
   sf::RectangleShape display_area_;
   sf::RectangleShape selected_cmd_area_;

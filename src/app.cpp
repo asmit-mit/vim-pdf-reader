@@ -1,5 +1,6 @@
 #include "app.h"
 #include "core/render_scheduler.h"
+#include "graphics/font_library.h"
 #include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
@@ -7,43 +8,30 @@
 #include <filesystem>
 
 App::App()
-    : font_normal_(settings::font_normal_), font_bold_(settings::font_bold_),
-      font_italic_(settings::font_italic_), document_(), renderer_(),
+    : font_regular_(settings::font_regular), font_bold_(settings::font_bold),
+      font_italic_(settings::font_italic), document_(), renderer_(),
       cmd_processor_(event_bus_, cmd_history_, search_history_, file_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
-      cmdline_(font_normal_, font_bold_, font_italic_, event_bus_, cmd_processor_, cmd_history_, search_history_),
-      pdf_view_(document_, render_scheduler_, event_bus_), statusbar_(font_normal_, event_bus_),
-      notifications_(font_normal_, font_bold_, notification_history_, event_bus_) {
-  const char *home = std::getenv("HOME");
-  if (!home)
-    home = ".";
+      cmdline_textbox_(font_library_, glyph_atlas_, utils::char_size, ":"),
+      cmdline_completions_(font_library_, glyph_atlas_, font_regular_, font_italic_, utils::char_size),
+      cmdline_(font_regular_, event_bus_, cmd_processor_, cmd_history_, search_history_, cmdline_textbox_, cmdline_completions_),
+      pdf_view_(document_, render_scheduler_, event_bus_), statusbar_(font_regular_, event_bus_),
+      notifications_(font_library_, glyph_atlas_, font_regular_, font_bold_, notification_history_, event_bus_) {
+  initHistory();
+  initWindow();
+  initApps();
 
-  std::string state_dir_ = std::string(home) + "/.local/state/vim-pdf-reader";
-  std::filesystem::create_directory(state_dir_);
+  font_library_.tryLoadFont(graphics::FontType::Regular, settings::font_regular);
+  font_library_.tryLoadFont(graphics::FontType::Bold, settings::font_bold);
+  font_library_.tryLoadFont(graphics::FontType::Italic, settings::font_italic);
+  font_library_.tryLoadFont(graphics::FontType::Emoji, settings::font_emoji);
+  font_library_.tryLoadFont(graphics::FontType::CJK, settings::font_cjk);
 
-  cmd_history_.setPath(state_dir_ + "/cmd_history");
-  search_history_.setPath(state_dir_ + "/search_history");
-  file_history_.setPath(state_dir_ + "/recent_files");
+  font_regular_.setSmooth(false);
+  font_bold_.setSmooth(false);
+  font_italic_.setSmooth(false);
 
-  search_history_.setSaveUnique(true);
-
-  sf::ContextSettings settings;
-  settings.antiAliasingLevel = 8;
-
-  window_ = sf::
-      RenderWindow(sf::VideoMode({res_x_, res_y_}), "Vim PDF Reader", (sf::Style::Resize + sf::Style::Close), sf::State::Windowed, settings);
-  focus_ = ui::UIElements::PDFView;
-
-  window_.setFramerateLimit(fps_);
-  window_.setKeyRepeatEnabled(true);
-
-  view_ = window_.getDefaultView();
-
-  cmdline_.onResize(view_.getSize());
-  statusbar_.onResize(view_.getSize());
-  pdf_view_.onResize(view_.getSize());
-
-  event_bus_.subscribe<bool>("cmd_processor.quit", [this](bool close) {
+  event_bus_.subscribe<bool>("cmd.quit", [this](bool close) {
     renderer_.clearCache();
     document_.closeDocument();
     window_.close();
@@ -74,6 +62,40 @@ void App::run() {
 
     window_.display();
   }
+}
+
+void App::initHistory() {
+  const char *home = std::getenv("HOME");
+  if (!home)
+    home = ".";
+
+  std::string state_dir_ = std::string(home) + "/.local/state/vim-pdf-reader";
+  std::filesystem::create_directory(state_dir_);
+
+  cmd_history_.setPath(state_dir_ + "/cmd_history");
+  file_history_.setPath(state_dir_ + "/recent_files");
+  search_history_.setPath(state_dir_ + "/search_history");
+  search_history_.setSaveUnique(true);
+}
+
+void App::initWindow() {
+  sf::ContextSettings settings;
+  settings.antiAliasingLevel = 8;
+
+  window_ = sf::
+      RenderWindow(sf::VideoMode({res_x_, res_y_}), "Vim PDF Reader", (sf::Style::Resize + sf::Style::Close), sf::State::Windowed, settings);
+  focus_ = ui::UIElements::PDFView;
+
+  window_.setFramerateLimit(fps_);
+  window_.setKeyRepeatEnabled(true);
+
+  view_ = window_.getDefaultView();
+}
+
+void App::initApps() {
+  cmdline_.onResize(view_.getSize());
+  statusbar_.onResize(view_.getSize());
+  pdf_view_.onResize(view_.getSize());
 }
 
 void App::processEvents() {

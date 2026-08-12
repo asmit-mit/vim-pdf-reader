@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <utf8.h>
 
 #include "pdf/pdf_renderer.h"
 #include "ui/pdf_view.h"
@@ -20,6 +21,7 @@ PDFView::PDFView(
   started_scrolling_ = false;
   page_positions_dirty_ = false;
   sync_state_dirty_ = false;
+  show_search_result_boxes_ = false;
 
   front_page_ = 0;
   anchor_page_ = 0;
@@ -28,19 +30,20 @@ PDFView::PDFView(
 
   page_with_max_width_ = 0;
 
-  event_bus_
-      .subscribe<std::string>("cmd_processor.open_document", [this](const std::string &filepath) {
-        onOpenDocument(filepath);
-      });
-
-  event_bus_.subscribe<bool>("cmd_processor.reload_document", [this](bool) {
-    onOpenDocument(filepath_);
+  event_bus_.subscribe<std::string>("cmd.open_document", [this](const std::string &filepath) {
+    onOpenDocument(filepath);
   });
 
-  event_bus_.subscribe<bool>("cmd_processor.close_document", [this](bool) { onCloseDocument(); });
+  event_bus_.subscribe<bool>("cmd.reload_document", [this](bool) { onOpenDocument(filepath_); });
 
-  event_bus_.subscribe<int>("cmd_processor.switch_page", [this](int page_num) {
+  event_bus_.subscribe<bool>("cmd.close_document", [this](bool) { onCloseDocument(); });
+
+  event_bus_.subscribe<int>("cmd.switch_page", [this](int page_num) {
     onSwitchPage(page_num - 1);
+  });
+
+  event_bus_.subscribe<const std::string &>("cmd.search", [this](const std::string &text) {
+    onSearchPage(text);
   });
 
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
@@ -120,6 +123,24 @@ void PDFView::handleEvent(const sf::Event &event) {
         setRotate((target_state_.rotate - 1) % 4);
       else
         setRotate((target_state_.rotate + 1) % 4);
+    } else if (key->code == sf::Keyboard::Key::F) {
+      pdf::PDFRenderKey base_key{anchor_page_, 1.f, target_state_.rotate};
+      const auto page_dims = scheduler_.getPageSize(base_key);
+      if (page_dims.x > 0 && page_dims.y > 0) {
+        const float viewable_h = window_size_.y - utils::cmdline_height_;
+        const float zoom_x = window_size_.x / static_cast<float>(page_dims.x);
+        const float zoom_y = viewable_h / static_cast<float>(page_dims.y);
+        setZoom(std::min(zoom_x, zoom_y));
+      }
+    } else if (key->code == sf::Keyboard::Key::W) {
+      pdf::PDFRenderKey base_key{anchor_page_, 1.f, target_state_.rotate};
+      const auto page_dims = scheduler_.getPageSize(base_key);
+      if (page_dims.x > 0)
+        setZoom(window_size_.x / static_cast<float>(page_dims.x));
+    } else if (key->code == sf::Keyboard::Key::Escape) {
+      show_search_result_boxes_ = false;
+      for (std::size_t i = front_page_; i <= back_page_; i++)
+        pages_[i].hideSelectionBoxes();
     }
   }
 }
@@ -150,7 +171,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
   } catch (const std::runtime_error &e) {
     onCloseDocument();
-    throw e;
+    event_bus_.emit("notification.msg", utf8::utf8to32(std::string(e.what())));
   }
 }
 
@@ -166,12 +187,12 @@ void PDFView::onCloseDocument() {
 
 void PDFView::onSwitchPage(int page_idx) {
   if (!has_document_) {
-    const char *msg = "No document currently open";
+    const std::u32string msg(U"No document currently open");
     event_bus_.emit("notification.msg", msg);
     return;
   }
   if (page_idx < 0 || page_idx >= static_cast<int>(document_.size())) {
-    const char *msg = "Page number out of range";
+    const std::u32string msg(U"Page number out of range");
     event_bus_.emit("notification.msg", msg);
     return;
   }
@@ -182,6 +203,29 @@ void PDFView::onSwitchPage(int page_idx) {
   started_scrolling_ = false;
 }
 
+void PDFView::onSearchPage(const std::string &text) {
+  if (!has_document_) {
+    const std::u32string msg(U"No document open to search");
+    event_bus_.emit("notification.msg", msg);
+    return;
+  }
+
+  if (!document_.isAllContentLoaded())
+    document_.loadAllContent();
+
+  std::u32string pattern;
+  for (char c : text)
+    pattern.push_back(static_cast<char32_t>(c));
+
+  for (std::size_t i = 0; i < document_.size(); i++) {
+    const auto &result = document_.getPage(i).searchText(pattern);
+  }
+
+  show_search_result_boxes_ = true;
+  for (std::size_t i = front_page_; i <= back_page_; i++)
+    pages_[i].showSelectionBoxes();
+}
+
 void PDFView::setInitialPagePos() {
   if (!need_initial_pos_)
     return;
@@ -189,12 +233,12 @@ void PDFView::setInitialPagePos() {
   if (!pages_[anchor_page_].hasTexture())
     return;
 
-  const auto size = pages_[anchor_page_].getGlobalBounds().size;
+  const auto size = scheduler_.getPageSize(pages_[anchor_page_].getKey());
 
   float x = window_size_.x * 0.5f;
   float y = size.y * 0.5f;
-  if (size.y <= window_size_.y)
-    y = window_size_.y * 0.5f - utils::cmdline_height_;
+  if (size.y <= (window_size_.y - utils::cmdline_height_))
+    y = (window_size_.y - utils::cmdline_height_) * 0.5;
 
   pages_[anchor_page_].setPosition({x, y});
   need_initial_pos_ = false;
@@ -284,7 +328,6 @@ void PDFView::updatePagePositions() {
   putPageInNonFracPos(curr);
   updateNeighbourPositions();
 
-  // Cache bounds for front/back pages — each was called twice before.
   const sf::Vector2f front_size = pages_[front_page_].getGlobalBounds().size;
   const sf::Vector2f back_size = pages_[back_page_].getGlobalBounds().size;
 
@@ -300,7 +343,6 @@ void PDFView::updatePagePositions() {
   } else if (back_bottom < bottom_limit) {
     curr.setPosition({curr.getPosition().x, curr_y + (bottom_limit - back_bottom)});
   } else {
-    // No clamping needed — neighbour positions are already up to date, skip second pass.
     putPageInNonFracPos(curr);
     return;
   }
@@ -353,8 +395,6 @@ void PDFView::setRotate(int rotate) {
 }
 
 void PDFView::updateNeighbourPositions() {
-  // Backward pass: walk from anchor-1 toward front.
-  // Seed with the anchor's bounds so the first iteration doesn't need a second lookup.
   if (anchor_page_ > front_page_) {
     sf::Vector2f below_size = pages_[anchor_page_].getGlobalBounds().size;
     for (int i = static_cast<int>(anchor_page_) - 1; i >= static_cast<int>(front_page_); --i) {
@@ -364,11 +404,10 @@ void PDFView::updateNeighbourPositions() {
       pages_[i].setPosition(
           {below_pos.x, below_pos.y - below_size.y * 0.5f - gap_ - curr_size.y * 0.5f}
       );
-      below_size = curr_size; // carry forward: next iteration's "below" is this page
+      below_size = curr_size;
     }
   }
 
-  // Forward pass: walk from anchor+1 toward back.
   if (anchor_page_ < back_page_) {
     sf::Vector2f above_size = pages_[anchor_page_].getGlobalBounds().size;
     for (std::size_t i = anchor_page_ + 1; i <= back_page_; ++i) {
@@ -378,7 +417,7 @@ void PDFView::updateNeighbourPositions() {
       pages_[i].setPosition(
           {above_pos.x, above_pos.y + above_size.y * 0.5f + gap_ + curr_size.y * 0.5f}
       );
-      above_size = curr_size; // carry forward: next iteration's "above" is this page
+      above_size = curr_size;
     }
   }
 }
@@ -476,8 +515,6 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
       --front;
   }
 
-  // Only reset pages that are falling out of the new visible range.
-  // Pages that remain within [front, back] keep their textures and positions.
   for (std::size_t i = front_page_; i <= back_page_; ++i) {
     if (static_cast<int>(i) < front || static_cast<int>(i) > back)
       pages_[i].reset();
@@ -489,6 +526,8 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
       continue;
 
     scheduler_.request(key);
+    if (show_search_result_boxes_)
+      pages_[i].showSelectionBoxes();
   }
 
   front_page_ = static_cast<std::size_t>(front);
@@ -497,7 +536,10 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
 
 void PDFView::resetView() {
   pages_.clear();
-  pages_.resize(document_.size(), dummy_);
+  page_search_result_.resize(document_.size());
+  pages_.reserve(document_.size());
+  for (std::size_t i = 0; i < document_.size(); i++)
+    pages_.emplace_back(dummy_, page_search_result_[i].boxes);
 
   need_initial_pos_ = true;
   window_size_changed_ = false;

@@ -14,13 +14,13 @@ struct PDFRenderKey {
   float zoom;
   int rotate;
 
-  bool operator==(const PDFRenderKey &other) const {
+  bool operator==(const PDFRenderKey &other) const noexcept {
     return page_idx == other.page_idx && zoom == other.zoom && rotate == other.rotate;
   }
 };
 
 struct PDFRenderKeyHash {
-  std::size_t operator()(const PDFRenderKey &key) const {
+  std::size_t operator()(const PDFRenderKey &key) const noexcept {
     std::size_t seed = 0;
 
     auto hashCombine = [&seed](std::size_t value) {
@@ -39,7 +39,7 @@ struct FzRectKey {
   fz_rect bounds;
   PDFRenderKey key;
 
-  bool operator==(const FzRectKey &other) const {
+  bool operator==(const FzRectKey &other) const noexcept {
     return (bounds.x1 - bounds.x0) == (other.bounds.x1 - other.bounds.x0) &&
            (bounds.y1 - bounds.y0) == (other.bounds.y1 - other.bounds.y0) &&
            key.zoom == other.key.zoom && key.rotate == other.key.rotate;
@@ -47,7 +47,7 @@ struct FzRectKey {
 };
 
 struct FzRectHash {
-  std::size_t operator()(const FzRectKey &key) const {
+  std::size_t operator()(const FzRectKey &key) const noexcept {
     std::size_t seed = 0;
 
     auto hashCombine = [&seed](std::size_t value) {

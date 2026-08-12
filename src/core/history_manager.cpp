@@ -1,6 +1,7 @@
 #include "core/history_manager.h"
 
 #include <fstream>
+#include <utf8.h>
 
 namespace core {
 
@@ -13,9 +14,11 @@ void HistoryManager::setPath(const std::string &path) {
 
   std::string line;
   while (std::getline(file, line)) {
+    std::u32string utf32_line = utf8::utf8to32(line);
+
     if (!line.empty()) {
-      history_.push_back(line);
-      history_set_.insert(line);
+      history_.push_back(utf32_line);
+      history_set_.insert(utf32_line);
     }
   }
 
@@ -39,7 +42,7 @@ void HistoryManager::reset() {
   curr_idx_ = history_.size();
 }
 
-void HistoryManager::add(const std::string &cmd) {
+void HistoryManager::add(const std::u32string &cmd) {
   if (cmd.empty())
     return;
 
@@ -54,33 +57,34 @@ void HistoryManager::add(const std::string &cmd) {
     history_set_.erase(history_.front());
     history_.pop_front();
   }
+
   reset();
   save();
 }
 
-std::string HistoryManager::getNext() {
+std::u32string HistoryManager::getNext() {
   if (history_.empty())
-    return "";
+    return U"";
   if (curr_idx_ < history_.size())
     ++curr_idx_;
   if (curr_idx_ == history_.size())
-    return "";
+    return U"";
   return history_[curr_idx_];
 }
 
-std::string HistoryManager::getPrevious() {
+std::u32string HistoryManager::getPrevious() {
   if (history_.empty())
-    return "";
+    return U"";
   if (curr_idx_ > 0)
     --curr_idx_;
   return history_[curr_idx_];
 }
 
-std::vector<std::string> HistoryManager::getAll() const {
+std::vector<std::u32string> HistoryManager::getAll() const {
   return {history_.begin(), history_.end()};
 }
 
-std::vector<std::string> HistoryManager::getAllUnique() const {
+std::vector<std::u32string> HistoryManager::getAllUnique() const {
   return {history_set_.begin(), history_set_.end()};
 }
 
@@ -91,8 +95,11 @@ void HistoryManager::save() {
   std::ofstream file(history_file_, std::ios::trunc);
   if (!file.is_open())
     return;
-  for (const auto &cmd : history_)
-    file << cmd << '\n';
+
+  for (const auto &cmd : history_) {
+    std::string utf8_cmd = utf8::utf32to8(cmd);
+    file << utf8_cmd << '\n';
+  }
 }
 
 } // namespace core

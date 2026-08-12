@@ -9,7 +9,7 @@ namespace ui {
 
 class PageView : public Widget {
 public:
-  PageView(const sf::Texture &dummy);
+  PageView(const sf::Texture &dummy, std::vector<sf::RectangleShape> &boxes);
 
   void draw(sf::RenderTarget &window) const override;
   void update() override {};
@@ -30,14 +30,19 @@ public:
   void setTexture(const sf::Texture &texture);
   void reset();
 
+  void showSelectionBoxes();
+  void hideSelectionBoxes();
+
   bool hasTexture() const;
   bool isInView(const sf::Vector2f &window_size) const;
 
 private:
+  std::vector<sf::RectangleShape> &selection_boxes_;
   sf::Sprite sprite_;
   pdf::PDFRenderKey key_;
 
-  bool active_ = false;
+  bool active_;
+  bool show_selection_boxes_;
 };
 
 } // namespace ui

@@ -19,12 +19,12 @@ class Cmdline : public Widget {
 public:
   explicit Cmdline(
       const sf::Font &font_normal,
-      const sf::Font &font_bold,
-      const sf::Font &font_italic,
       core::EventBus &event_bus,
       core::CmdProcessor &cmd_processor,
       core::HistoryManager &cmd_history,
-      core::HistoryManager &search_history
+      core::HistoryManager &search_history,
+      ui::Textbox &textbox,
+      ui::Completions &completions
   );
 
   void draw(sf::RenderTarget &window) const override;
@@ -46,17 +46,16 @@ private:
   const sf::Font &font_;
 
   sf::Text label_;
-  ui::Textbox textbox_;
-  ui::Completions completions_;
+  ui::Textbox &textbox_;
+  ui::Completions &completions_;
   sf::RectangleShape display_area_;
 
   sf::Vector2f window_size_;
-  std::string original_string_;
+  std::u32string original_string_;
 
   CmdlineMode mode_;
 
   bool visible_;
-  bool ignore_next_text_entered_;
 };
 
 } // namespace ui
