@@ -85,7 +85,7 @@ std::string Notifications::wrapText(
 ) {
   std::vector<std::string> tokens;
   std::string current;
-  for (char32_t c : raw) {
+  for (char c : raw) {
     if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
       if (!current.empty()) {
         tokens.push_back(current);
@@ -99,7 +99,7 @@ std::string Notifications::wrapText(
     tokens.push_back(current);
 
   sf::Text probe(font, "", char_size);
-  auto line_width = [&](const std::string &s) -> float {
+  auto lineWidth = [&](const std::string &s) -> float {
     probe.setString(sf::String(s));
     return probe.getLocalBounds().size.x;
   };
@@ -109,11 +109,13 @@ std::string Notifications::wrapText(
   auto flushLine = [&](const std::string &l) { result += l + '\n'; };
 
   auto fitPrefix = [&](const std::string &prefix, const std::string &word) -> std::size_t {
+    std::string base = prefix + '-';
     std::size_t lo = 1, hi = word.size(), best = 0;
     while (lo <= hi) {
       std::size_t mid = (lo + hi) / 2;
-      std::string candidate = prefix + word.substr(0, mid) + '-';
-      if (line_width(candidate) <= max_width) {
+      std::string candidate = base;
+      candidate.insert(base.size() - 1, word, 0, mid);
+      if (lineWidth(candidate) <= max_width) {
         best = mid;
         lo = mid + 1;
       } else {
@@ -131,7 +133,7 @@ std::string Notifications::wrapText(
       std::string prefix = (first && !line.empty()) ? line + ' ' : "";
       first = false;
 
-      if (line_width(prefix + remaining) <= max_width) {
+      if (lineWidth(prefix + remaining) <= max_width) {
         line = prefix + remaining;
         return;
       }
@@ -155,10 +157,17 @@ std::string Notifications::wrapText(
 
   for (const std::string &word : tokens) {
     std::string candidate = line.empty() ? word : line + ' ' + word;
-    if (line_width(candidate) <= max_width)
+    if (lineWidth(candidate) <= max_width) {
       line = candidate;
-    else
-      hyphenateWord(word);
+    } else {
+      float word_w = lineWidth(word);
+      if (!line.empty() && word_w <= max_width) {
+        flushLine(line);
+        line = word;
+      } else {
+        hyphenateWord(word);
+      }
+    }
   }
 
   if (!line.empty())

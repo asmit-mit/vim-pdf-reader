@@ -1,5 +1,7 @@
 #include "ui/textbox.h"
-#include "utf8/checked.h"
+
+#include <utf8.h>
+
 #include "utils/settings.h"
 #include "utils/utils.h"
 
@@ -54,6 +56,7 @@ void Textbox::update() {
   if (text_dirty_) {
     display_text_.setString(u32_text_);
     display_text_.setPosition(pos_);
+    text_ = utf8::utf32to8(u32_text_);
     text_dirty_ = false;
   }
 
@@ -261,7 +264,6 @@ void Textbox::reset() {
 }
 
 void Textbox::setText(const std::string &text) {
-  text_ = text;
   setText(utf8::utf8to32(text));
 }
 

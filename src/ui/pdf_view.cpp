@@ -6,7 +6,6 @@
 #include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
-#include <print>
 
 namespace ui {
 
@@ -41,10 +40,7 @@ PDFView::PDFView(
 
   event_bus_.subscribe<bool>("cmd.reload_document", [this](bool) { onOpenDocument(filepath_); });
 
-  event_bus_.subscribe<bool>("cmd.close_document", [this](bool) {
-    std::println("closing doc");
-    onCloseDocument();
-  });
+  event_bus_.subscribe<bool>("cmd.close_document", [this](bool) { onCloseDocument(); });
 
   event_bus_.subscribe<int>("cmd.switch_page", [this](int page_num) {
     onSwitchPage(page_num - 1);

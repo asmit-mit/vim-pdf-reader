@@ -30,7 +30,7 @@ void CmdProcessor::runCommand(const std::string &cmd) {
   if (!cmd_ptr)
     throw std::runtime_error("Not a valid command: " + arg);
 
-  if (cmd_ptr->args.has_value() && argv.size() != cmd_ptr->args.value())
+  if (cmd_ptr->args.has_value() && argv.size() != (size_t)cmd_ptr->args.value())
     throw std::runtime_error(
         "Provided " + std::to_string(argv.size() - 1) + " argument(s), but required " +
         std::to_string(cmd_ptr->args.value() - 1)
