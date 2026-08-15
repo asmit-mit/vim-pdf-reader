@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <stdexcept>
 #include <utf8.h>
 
@@ -158,8 +159,9 @@ void PDFView::onResize(const sf::Vector2f &size) {
 
 void PDFView::onOpenDocument(const std::string &filepath) {
   try {
+    std::string absolute_path = utils::resolvePath(filepath);
     scheduler_.quiesce();
-    document_.openDocument(utils::resolvePath(filepath));
+    document_.openDocument(absolute_path);
     filepath_ = filepath;
     scheduler_.clearCache();
     scheduler_.resume();
@@ -174,7 +176,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.total_pages", document_.size());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
 
-    file_history_.add(filepath);
+    file_history_.add(absolute_path);
   } catch (const std::runtime_error &e) {
     onCloseDocument();
     event_bus_.emit("notification.msg", std::string(e.what()));

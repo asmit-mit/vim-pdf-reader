@@ -10,43 +10,58 @@ CmdAutocomplete::CmdAutocomplete(const CmdLoader &cmd_loader) : cmd_loader_(cmd_
     trie_.insert(cmd->name);
 }
 
-void CmdAutocomplete::push(const Cmd *cmd, const std::string &full_cmd) {
-  results_.push_back({
-      utf8::utf8to32(cmd->name),
-      utf8::utf8to32(full_cmd),
+void CmdAutocomplete::push(
+    const Cmd *cmd, const std::string &full_cmd, std::vector<CmdAutocompleteItem> &results
+) {
+  results.push_back({
+      cmd->name,
+      full_cmd,
       cmd->description,
   });
 }
 
-const std::vector<CmdAutocompleteItem> &CmdAutocomplete::complete(const std::string &prefix) {
-  results_.clear();
-
+std::vector<CmdAutocompleteItem> CmdAutocomplete::complete(const std::string &prefix) {
+  std::vector<CmdAutocompleteItem> res;
   std::vector<std::string> argv;
   tokenize(prefix, argv);
 
   if (argv.empty()) {
     for (const Cmd *cmd : cmd_loader_.getRootCmds())
-      push(cmd, cmd->name);
-    return results_;
+      push(cmd, cmd->name + " ", res);
+    return res;
   }
 
   if (argv.size() == 1 && !prefix.ends_with(' ')) {
     for (const std::string &name : trie_.complete(argv[0]))
       if (const Cmd *cmd = cmd_loader_.find(name))
-        push(cmd, cmd->name);
-    return results_;
+        push(cmd, cmd->name + " ", res);
+    return res;
   }
 
-  const std::string &root = argv[0];
-  const std::string child_prefix = (argv.size() >= 2) ? argv[1] : "";
+  std::vector<std::string> confirmed;
+  std::string typing;
 
-  for (const Cmd *child : cmd_loader_.childrenOf(root)) {
-    if (child->name.starts_with(child_prefix)) {
-      push(child, root + " " + child->name);
+  if (prefix.ends_with(' ')) {
+    confirmed = argv;
+    typing = "";
+  } else {
+    confirmed = std::vector<std::string>(argv.begin(), argv.end() - 1);
+    typing = argv.back();
+  }
+
+  std::string scoped_key = confirmed[0];
+  for (size_t i = 1; i < confirmed.size(); ++i)
+    scoped_key += "." + confirmed[i];
+
+  for (const Cmd *child : cmd_loader_.childrenOf(scoped_key)) {
+    if (child->name.starts_with(typing)) {
+      std::string full = scoped_key + " " + child->name;
+      std::replace(full.begin(), full.end(), '.', ' ');
+      push(child, full + " ", res);
     }
   }
 
-  return results_;
+  return res;
 }
 
 void CmdAutocomplete::tokenize(const std::string &input, std::vector<std::string> &argv) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/cmd_autocomplete.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
 #include "core/history_manager.h"
@@ -21,6 +22,7 @@ public:
       const sf::Font &font_normal,
       core::EventBus &event_bus,
       core::CmdProcessor &cmd_processor,
+      core::CmdAutocomplete &cmd_autocomplete,
       core::HistoryManager &cmd_history,
       core::HistoryManager &search_history,
       ui::Textbox &textbox,
@@ -41,6 +43,7 @@ private:
 private:
   core::EventBus &event_bus_;
   core::CmdProcessor &cmd_processor_;
+  core::CmdAutocomplete &cmd_autocomplete_;
   core::HistoryManager &cmd_history_;
   core::HistoryManager &search_history_;
   const sf::Font &font_;

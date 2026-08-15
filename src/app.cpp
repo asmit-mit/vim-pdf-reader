@@ -1,4 +1,5 @@
 #include "app.h"
+#include "core/cmd_autocomplete.h"
 #include "core/render_scheduler.h"
 #include "graphics/font_library.h"
 #include "ui/ui_elements.h"
@@ -9,14 +10,21 @@
 
 App::App()
     : font_regular_(settings::font_regular), font_bold_(settings::font_bold),
-      font_italic_(settings::font_italic), document_(), renderer_(),
-      cmd_loader_("./config/commands.json"), cmd_processor_(event_bus_, cmd_loader_, cmd_history_),
+      font_italic_(settings::font_italic), font_library_(
+                                               {settings::font_regular,
+                                                settings::font_bold,
+                                                settings::font_italic,
+                                                settings::font_emoji,
+                                                settings::font_cjk}
+                                           ),
+      document_(), renderer_(), cmd_loader_(settings::commands_json),
+      cmd_processor_(event_bus_, cmd_loader_, cmd_history_), cmd_autocomplete_(cmd_loader_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
       cmdline_textbox_(font_library_, glyph_atlas_, utils::char_size, ":"),
       cmdline_completions_(font_library_, glyph_atlas_, font_regular_, font_italic_, utils::char_size),
-      cmdline_(font_regular_, event_bus_, cmd_processor_, cmd_history_, search_history_, cmdline_textbox_, cmdline_completions_),
+      cmdline_(font_regular_, event_bus_, cmd_processor_, cmd_autocomplete_, cmd_history_, search_history_, cmdline_textbox_, cmdline_completions_),
       pdf_view_(file_history_, document_, render_scheduler_, event_bus_),
-      statusbar_(font_regular_, event_bus_),
+      statusbar_(font_library_, glyph_atlas_, font_regular_, event_bus_),
       notifications_(font_library_, glyph_atlas_, font_regular_, font_bold_, notification_history_, event_bus_) {
   initHistory();
   initWindow();
@@ -96,12 +104,6 @@ void App::initUI() {
 }
 
 void App::initFonts() {
-  font_library_.tryLoadFont(graphics::FontType::Regular, settings::font_regular);
-  font_library_.tryLoadFont(graphics::FontType::Bold, settings::font_bold);
-  font_library_.tryLoadFont(graphics::FontType::Italic, settings::font_italic);
-  font_library_.tryLoadFont(graphics::FontType::Emoji, settings::font_emoji);
-  font_library_.tryLoadFont(graphics::FontType::CJK, settings::font_cjk);
-
   font_regular_.setSmooth(false);
   font_bold_.setSmooth(false);
   font_italic_.setSmooth(false);

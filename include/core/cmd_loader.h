@@ -27,7 +27,7 @@ public:
   std::vector<const Cmd *> childrenOf(const std::string &scoped_key) const;
 
 private:
-  size_t parseCmd(simdjson::ondemand::object cmd, const std::string &parent_key, int depth);
+  size_t parseCmd(simdjson::dom::element obj, const std::string &parent_key, int depth);
 
 private:
   std::vector<Cmd> commands_;

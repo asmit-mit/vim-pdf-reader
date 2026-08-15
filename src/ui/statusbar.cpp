@@ -5,15 +5,22 @@
 
 namespace ui {
 
-Statusbar::Statusbar(const sf::Font &font, core::EventBus &event_bus)
-    : font_(font), display_filepath_(font_, "[Nothing Open Yet]", 16),
-      display_page_num_(font_, "[]", 16), display_zoom_(font_, "[]", 16), event_bus_(event_bus) {
+Statusbar::Statusbar(
+    graphics::FontLibrary &font_lib,
+    graphics::GlyphAtlas &glyph_atlas,
+    const sf::Font &font,
+    core::EventBus &event_bus
+)
+    : font_(font), display_filepath_(font_lib, glyph_atlas, 16), display_page_num_(font_, "[]", 16),
+      display_zoom_(font_, "[]", 16), event_bus_(event_bus) {
   display_area_.setFillColor(utils::hexToRGB(settings::status_bg_));
   display_area_.setSize({200.0, height_});
 
   display_filepath_.setFillColor(utils::hexToRGB(settings::fg_));
   display_page_num_.setFillColor(utils::hexToRGB(settings::fg_));
   display_zoom_.setFillColor(utils::hexToRGB(settings::fg_));
+
+  display_filepath_.setString("[Nothing Open Yet]");
 
   page_idx_ = 0;
   total_pages_ = 0;
@@ -64,46 +71,38 @@ void Statusbar::update() {
   }
 
   float y = std::round(curr_y_);
-
   if (move_up_)
     y = (y - height_) + 1.f;
 
   display_area_.setPosition({curr_x_, y});
 
-  const float round_y = std::round(y + height_ / 2.f);
+  const float filepath_h = display_filepath_.getSize().y;
+  const float filepath_y = std::round(y + (height_ - filepath_h) / 2.f);
 
-  display_filepath_.setPosition({utils::padding, round_y});
+  display_filepath_.setPosition({utils::padding, filepath_y - 3.f});
+
+  const float text_y_base = y + height_ / 2.f;
+
+  const auto page_num_bounds = display_page_num_.getLocalBounds();
+  const float page_num_y = std::round(
+      text_y_base - page_num_bounds.size.y / 2.f - page_num_bounds.position.y
+  );
   const float page_num_x = std::round(
-      display_area_.getSize().x - display_page_num_.getLocalBounds().size.x - utils::padding
-  );
-  const float zoom_x = std::round(
-      page_num_x - display_zoom_.getLocalBounds().size.x - utils::padding
+      display_area_.getSize().x - page_num_bounds.size.x - utils::padding
   );
 
-  display_page_num_.setPosition({page_num_x, round_y});
-  display_zoom_.setPosition({zoom_x, round_y});
+  const auto zoom_bounds = display_zoom_.getLocalBounds();
+  const float zoom_y = std::round(text_y_base - zoom_bounds.size.y / 2.f - zoom_bounds.position.y);
+  const float zoom_x = std::round(page_num_x - zoom_bounds.size.x - utils::padding);
+
+  display_page_num_.setPosition({page_num_x, page_num_y});
+  display_zoom_.setPosition({zoom_x, zoom_y});
 }
 
 void Statusbar::onResize(const sf::Vector2f &size) {
   curr_x_ = 0;
   curr_y_ = size.y - height_;
-
   display_area_.setSize({size.x, height_});
-
-  const auto filepath_bounds = display_filepath_.getLocalBounds();
-  display_filepath_.setOrigin(
-      {filepath_bounds.position.x, filepath_bounds.position.y + filepath_bounds.size.y / 2.f}
-  );
-
-  const auto page_num_bounds = display_page_num_.getLocalBounds();
-  display_page_num_.setOrigin(
-      {page_num_bounds.position.x, page_num_bounds.position.y + page_num_bounds.size.y / 2.f}
-  );
-
-  const auto zoom_bounds = display_zoom_.getLocalBounds();
-  display_zoom_.setOrigin(
-      {zoom_bounds.position.x, zoom_bounds.position.y + zoom_bounds.size.y / 2.f}
-  );
 }
 
 } // namespace ui

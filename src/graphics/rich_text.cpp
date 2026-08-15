@@ -1,8 +1,8 @@
 #include "graphics/rich_text.h"
 
-#include <utf8.h>
 #include <iostream>
 #include <stdexcept>
+#include <utf8.h>
 
 namespace graphics {
 

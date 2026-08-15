@@ -5,17 +5,15 @@
 namespace core {
 
 CmdLoader::CmdLoader(const std::filesystem::path path) {
-  auto json = simdjson::padded_string::load(path.generic_string());
-  if (json.error())
-    throw std::runtime_error(simdjson::error_message(json.error()));
+  simdjson::dom::parser parser;
+  simdjson::dom::element doc;
 
-  simdjson::ondemand::parser parser;
-  auto doc = parser.iterate(json);
-  if (doc.error())
-    throw std::runtime_error(simdjson::error_message(doc.error()));
+  auto error = parser.load(path.generic_string()).get(doc);
+  if (error)
+    throw std::runtime_error(simdjson::error_message(error));
 
-  for (auto cmd : doc.get_array())
-    parseCmd(cmd.get_object().value(), "", 0);
+  for (simdjson::dom::element cmd : doc.get_array())
+    parseCmd(cmd, "", 0);
 }
 
 std::vector<const Cmd *> CmdLoader::getRootCmds() const {
@@ -50,9 +48,8 @@ std::vector<const Cmd *> CmdLoader::childrenOf(const std::string &scoped_key) co
 }
 
 std::size_t
-CmdLoader::parseCmd(simdjson::ondemand::object obj, const std::string &parent_key, int depth) {
+CmdLoader::parseCmd(simdjson::dom::element obj, const std::string &parent_key, int depth) {
   Cmd cmd;
-
   cmd.name = std::string(obj["name"].get_string().value());
   cmd.description = std::string(obj["description"].get_string().value());
 
@@ -60,22 +57,22 @@ CmdLoader::parseCmd(simdjson::ondemand::object obj, const std::string &parent_ke
   if (obj["args"].get_int64().get(args) == simdjson::SUCCESS)
     cmd.args = static_cast<int32_t>(args);
 
-  std::string event;
+  std::string_view event;
   if (obj["event"].get_string().get(event) == simdjson::SUCCESS)
-    cmd.event = std::move(event);
+    cmd.event = std::string(event);
 
   std::string scoped_key = parent_key.empty() ? cmd.name : parent_key + "." + cmd.name;
-
   size_t idx = commands_.size();
   if (depth == 0)
     roots_.push_back(idx);
   commands_.push_back({});
 
-  for (auto child : obj["children"].get_array()) {
-    size_t child_idx = parseCmd(child.get_object().value(), scoped_key, depth + 1);
+  for (simdjson::dom::element child : obj["children"].get_array()) {
+    size_t child_idx = parseCmd(child, scoped_key, depth + 1);
     commands_[idx].children.push_back(child_idx);
   }
 
+  cmd.children = std::move(commands_[idx].children);
   commands_[idx] = std::move(cmd);
   index_[scoped_key] = idx;
   return idx;

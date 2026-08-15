@@ -29,6 +29,7 @@ struct Font {
 class FontLibrary {
 public:
   FontLibrary();
+  FontLibrary(const std::vector<const char *> &paths);
 
   FontLibrary(const FontLibrary &) = delete;
   FontLibrary &operator=(const FontLibrary &) = delete;
