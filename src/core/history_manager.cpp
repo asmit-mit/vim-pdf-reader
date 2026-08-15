@@ -17,7 +17,7 @@ void HistoryManager::setPath(const std::string &path) {
     if (line.empty())
       continue;
 
-    std::u32string cmd = utf8::utf8to32(line);
+    std::string cmd = line;
 
     if (save_unique_)
       history_set_.insert(cmd);
@@ -63,7 +63,7 @@ void HistoryManager::reset() {
   curr_idx_ = save_unique_ ? history_set_.size() : history_.size();
 }
 
-void HistoryManager::add(const std::u32string &cmd) {
+void HistoryManager::add(const std::string &cmd) {
   if (cmd.empty())
     return;
 
@@ -86,28 +86,28 @@ void HistoryManager::add(const std::u32string &cmd) {
   save();
 }
 
-std::u32string HistoryManager::getNext() {
+std::string HistoryManager::getNext() {
   if (save_unique_)
-    return U"";
+    return "";
 
   if (history_.empty())
-    return U"";
+    return "";
 
   if (curr_idx_ < history_.size())
     ++curr_idx_;
 
   if (curr_idx_ == history_.size())
-    return U"";
+    return "";
 
   return history_[curr_idx_];
 }
 
-std::u32string HistoryManager::getPrevious() {
+std::string HistoryManager::getPrevious() {
   if (save_unique_)
-    return U"";
+    return "";
 
   if (history_.empty())
-    return U"";
+    return "";
 
   if (curr_idx_ > 0)
     --curr_idx_;
@@ -115,18 +115,18 @@ std::u32string HistoryManager::getPrevious() {
   return history_[curr_idx_];
 }
 
-std::vector<std::u32string> HistoryManager::getAll() const {
+std::vector<std::string> HistoryManager::getAll() const {
   if (save_unique_)
     return {history_set_.begin(), history_set_.end()};
 
   return {history_.begin(), history_.end()};
 }
 
-std::vector<std::u32string> HistoryManager::getAllUnique() const {
+std::vector<std::string> HistoryManager::getAllUnique() const {
   if (save_unique_)
     return {history_set_.begin(), history_set_.end()};
 
-  std::unordered_set<std::u32string> unique;
+  std::unordered_set<std::string> unique;
 
   for (const auto &cmd : history_)
     unique.insert(cmd);
@@ -145,11 +145,11 @@ void HistoryManager::save() {
 
   if (save_unique_) {
     for (const auto &cmd : history_set_) {
-      file << utf8::utf32to8(cmd) << '\n';
+      file << cmd << '\n';
     }
   } else {
     for (const auto &cmd : history_) {
-      file << utf8::utf32to8(cmd) << '\n';
+      file << cmd << '\n';
     }
   }
 }

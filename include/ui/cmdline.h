@@ -51,7 +51,7 @@ private:
   sf::RectangleShape display_area_;
 
   sf::Vector2f window_size_;
-  std::u32string original_string_;
+  std::string original_string_;
 
   CmdlineMode mode_;
 

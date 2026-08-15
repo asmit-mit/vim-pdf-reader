@@ -58,7 +58,7 @@ void Completions::update() {
   if (list_dirty_) {
     std::size_t row = 0;
     for (std::size_t i = first_visible_; i < last; ++i, ++row) {
-      display_cmd_list_[row].setString(utf8::utf8to32(completions_[i].first));
+      display_cmd_list_[row].setString(completions_[i].first);
       display_desc_list_[row].setString(completions_[i].second);
     }
 

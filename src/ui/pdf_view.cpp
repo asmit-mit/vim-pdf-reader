@@ -6,6 +6,7 @@
 #include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
+#include <print>
 
 namespace ui {
 
@@ -40,7 +41,10 @@ PDFView::PDFView(
 
   event_bus_.subscribe<bool>("cmd.reload_document", [this](bool) { onOpenDocument(filepath_); });
 
-  event_bus_.subscribe<bool>("cmd.close_document", [this](bool) { onCloseDocument(); });
+  event_bus_.subscribe<bool>("cmd.close_document", [this](bool) {
+    std::println("closing doc");
+    onCloseDocument();
+  });
 
   event_bus_.subscribe<int>("cmd.switch_page", [this](int page_num) {
     onSwitchPage(page_num - 1);
@@ -174,10 +178,10 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     event_bus_.emit("statusbar.total_pages", document_.size());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
 
-    file_history_.add(utf8::utf8to32(filepath));
+    file_history_.add(filepath);
   } catch (const std::runtime_error &e) {
     onCloseDocument();
-    event_bus_.emit("notification.msg", utf8::utf8to32(std::string(e.what())));
+    event_bus_.emit("notification.msg", std::string(e.what()));
   }
 }
 
@@ -193,13 +197,11 @@ void PDFView::onCloseDocument() {
 
 void PDFView::onSwitchPage(int page_idx) {
   if (!has_document_) {
-    const std::u32string msg(U"No document currently open");
-    event_bus_.emit("notification.msg", msg);
+    event_bus_.emit("notification.msg", std::string("No document currently open"));
     return;
   }
   if (page_idx < 0 || page_idx >= static_cast<int>(document_.size())) {
-    const std::u32string msg(U"Page number out of range");
-    event_bus_.emit("notification.msg", msg);
+    event_bus_.emit("notification.msg", std::string("Page number out of range"));
     return;
   }
   anchor_page_ = static_cast<std::size_t>(page_idx);
@@ -211,8 +213,7 @@ void PDFView::onSwitchPage(int page_idx) {
 
 void PDFView::onSearchPage(const std::string &text) {
   if (!has_document_) {
-    const std::u32string msg(U"No document open to search");
-    event_bus_.emit("notification.msg", msg);
+    event_bus_.emit("notification.msg", std::string("No document open to search"));
     return;
   }
 

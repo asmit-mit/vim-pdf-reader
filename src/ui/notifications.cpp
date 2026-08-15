@@ -31,10 +31,9 @@ Notifications::Notifications(
   idle_color_ = utils::hexToRGB(settings::bg_);
   hover_color_ = utils::hexToRGB(settings::notification_hover_bg_);
 
-  event_bus_
-      .subscribe<const std::u32string &>("notification.msg", [this](const std::u32string &msg) {
-        show(msg);
-      });
+  event_bus_.subscribe<const std::string &>("notification.msg", [this](const std::string &msg) {
+    show(msg);
+  });
 }
 
 void Notifications::update() {
@@ -81,13 +80,13 @@ void Notifications::onResize(const sf::Vector2f &size) {
   layout();
 }
 
-std::u32string Notifications::wrapText(
-    const std::u32string &raw, const sf::Font &font, unsigned int char_size, float max_width
+std::string Notifications::wrapText(
+    const std::string &raw, const sf::Font &font, unsigned int char_size, float max_width
 ) {
-  std::vector<std::u32string> tokens;
-  std::u32string current;
+  std::vector<std::string> tokens;
+  std::string current;
   for (char32_t c : raw) {
-    if (c == U' ' || c == U'\t' || c == U'\n' || c == U'\r') {
+    if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
       if (!current.empty()) {
         tokens.push_back(current);
         current.clear();
@@ -100,20 +99,20 @@ std::u32string Notifications::wrapText(
     tokens.push_back(current);
 
   sf::Text probe(font, "", char_size);
-  auto line_width = [&](const std::u32string &s) -> float {
+  auto line_width = [&](const std::string &s) -> float {
     probe.setString(sf::String(s));
     return probe.getLocalBounds().size.x;
   };
 
-  std::u32string line, result;
+  std::string line, result;
 
-  auto flushLine = [&](const std::u32string &l) { result += l + U'\n'; };
+  auto flushLine = [&](const std::string &l) { result += l + '\n'; };
 
-  auto fitPrefix = [&](const std::u32string &prefix, const std::u32string &word) -> std::size_t {
+  auto fitPrefix = [&](const std::string &prefix, const std::string &word) -> std::size_t {
     std::size_t lo = 1, hi = word.size(), best = 0;
     while (lo <= hi) {
       std::size_t mid = (lo + hi) / 2;
-      std::u32string candidate = prefix + word.substr(0, mid) + U'-';
+      std::string candidate = prefix + word.substr(0, mid) + '-';
       if (line_width(candidate) <= max_width) {
         best = mid;
         lo = mid + 1;
@@ -124,12 +123,12 @@ std::u32string Notifications::wrapText(
     return best;
   };
 
-  auto hyphenateWord = [&](const std::u32string &word) {
-    std::u32string remaining = word;
+  auto hyphenateWord = [&](const std::string &word) {
+    std::string remaining = word;
     bool first = true;
 
     while (!remaining.empty()) {
-      std::u32string prefix = (first && !line.empty()) ? line + U' ' : U"";
+      std::string prefix = (first && !line.empty()) ? line + ' ' : "";
       first = false;
 
       if (line_width(prefix + remaining) <= max_width) {
@@ -141,21 +140,21 @@ std::u32string Notifications::wrapText(
       if (n == 0) {
         if (!line.empty()) {
           flushLine(line);
-          line = U"";
+          line = "";
           continue;
         }
 
         n = 1;
       }
 
-      flushLine(prefix + remaining.substr(0, n) + U'-');
-      line = U"";
+      flushLine(prefix + remaining.substr(0, n) + '-');
+      line = "";
       remaining = remaining.substr(n);
     }
   };
 
-  for (const std::u32string &word : tokens) {
-    std::u32string candidate = line.empty() ? word : line + U' ' + word;
+  for (const std::string &word : tokens) {
+    std::string candidate = line.empty() ? word : line + ' ' + word;
     if (line_width(candidate) <= max_width)
       line = candidate;
     else
@@ -167,11 +166,11 @@ std::u32string Notifications::wrapText(
   return result;
 }
 
-void Notifications::show(const std::u32string &msg) {
+void Notifications::show(const std::string &msg) {
   history_.add(msg);
 
   const float inner_width = max_width_ - 2.f * padding_;
-  std::u32string wrapped = wrapText(msg, font_normal_, utils::char_size, inner_width);
+  std::string wrapped = wrapText(msg, font_normal_, utils::char_size, inner_width);
 
   display_msg_.setString(wrapped);
   display_timer_.restart();

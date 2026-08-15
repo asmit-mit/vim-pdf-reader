@@ -31,8 +31,10 @@ public:
   void clear();
   void reset();
 
+  void setText(const std::string &text);
   void setText(const std::u32string &text);
-  const std::u32string &getText() const;
+  const std::string &getText() const;
+  const std::u32string &getTextU32() const;
 
   void setCursorPosition(int pos);
   std::size_t getCursorPosition() const;
@@ -89,7 +91,8 @@ private:
   graphics::RichText display_text_;
   graphics::RichText display_text_selected_;
 
-  std::u32string text_;
+  std::string text_;
+  std::u32string u32_text_;
   bool text_dirty_;
 
   Selection selection_;

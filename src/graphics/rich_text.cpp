@@ -1,5 +1,6 @@
 #include "graphics/rich_text.h"
 
+#include <utf8.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -25,6 +26,10 @@ RichText::RichText(RichText &&other) noexcept
       pixel_size_(other.pixel_size_), text_color_(other.text_color_),
       line_height_(other.line_height_), font_loaded_(other.font_loaded_),
       default_font_type_(other.default_font_type_) {}
+
+void RichText::setString(const std::string &text) {
+  setString(utf8::utf8to32(text));
+}
 
 void RichText::setString(const std::u32string &text) {
   text_ = text;

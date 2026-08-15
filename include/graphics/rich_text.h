@@ -32,6 +32,7 @@ public:
 
   ~RichText() = default;
 
+  void setString(const std::string &text);
   void setString(const std::u32string &text);
   void setFillColor(sf::Color color);
   void setCharacterSize(uint32_t size);
