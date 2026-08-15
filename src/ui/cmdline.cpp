@@ -32,10 +32,6 @@ Cmdline::Cmdline(
   completions_.setCmdColor(utils::hexToRGB(settings::fg_));
   completions_.setDescColor(utils::hexToRGB(settings::completions_desc_fg_));
 
-  event_bus_.subscribe<bool>("cmd.clear_search", [this](bool) { search_history_.clear(); });
-
-  event_bus_.subscribe<bool>("cmd.clear_history", [this](bool) { cmd_history_.clear(); });
-
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     visible_ = focus == ui::UIElements::Cmdline;
     if (visible_) {

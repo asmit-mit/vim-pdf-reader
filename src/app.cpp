@@ -20,17 +20,8 @@ App::App()
       notifications_(font_library_, glyph_atlas_, font_regular_, font_bold_, notification_history_, event_bus_) {
   initHistory();
   initWindow();
-  initApps();
-
-  font_library_.tryLoadFont(graphics::FontType::Regular, settings::font_regular);
-  font_library_.tryLoadFont(graphics::FontType::Bold, settings::font_bold);
-  font_library_.tryLoadFont(graphics::FontType::Italic, settings::font_italic);
-  font_library_.tryLoadFont(graphics::FontType::Emoji, settings::font_emoji);
-  font_library_.tryLoadFont(graphics::FontType::CJK, settings::font_cjk);
-
-  font_regular_.setSmooth(false);
-  font_bold_.setSmooth(false);
-  font_italic_.setSmooth(false);
+  initUI();
+  initFonts();
 
   event_bus_.subscribe<bool>("cmd.quit", [this](bool close) {
     renderer_.clearCache();
@@ -78,6 +69,10 @@ void App::initHistory() {
   search_history_.setPath(state_dir_ + "/search_history");
 
   file_history_.setSaveUnique(true);
+
+  event_bus_.subscribe<bool>("cmd.clear_files", [this](bool) { file_history_.clear(); });
+  event_bus_.subscribe<bool>("cmd.clear_search", [this](bool) { search_history_.clear(); });
+  event_bus_.subscribe<bool>("cmd.clear_history", [this](bool) { cmd_history_.clear(); });
 }
 
 void App::initWindow() {
@@ -94,10 +89,22 @@ void App::initWindow() {
   view_ = window_.getDefaultView();
 }
 
-void App::initApps() {
+void App::initUI() {
   cmdline_.onResize(view_.getSize());
   statusbar_.onResize(view_.getSize());
   pdf_view_.onResize(view_.getSize());
+}
+
+void App::initFonts() {
+  font_library_.tryLoadFont(graphics::FontType::Regular, settings::font_regular);
+  font_library_.tryLoadFont(graphics::FontType::Bold, settings::font_bold);
+  font_library_.tryLoadFont(graphics::FontType::Italic, settings::font_italic);
+  font_library_.tryLoadFont(graphics::FontType::Emoji, settings::font_emoji);
+  font_library_.tryLoadFont(graphics::FontType::CJK, settings::font_cjk);
+
+  font_regular_.setSmooth(false);
+  font_bold_.setSmooth(false);
+  font_italic_.setSmooth(false);
 }
 
 void App::processEvents() {

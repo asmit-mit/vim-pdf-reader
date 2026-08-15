@@ -23,7 +23,8 @@ public:
 private:
   void initHistory();
   void initWindow();
-  void initApps();
+  void initUI();
+  void initFonts();
   void processEvents();
 
 private:
