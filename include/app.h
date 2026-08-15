@@ -40,6 +40,7 @@ private:
   pdf::PDFRenderer renderer_;
 
   core::EventBus event_bus_;
+  core::CmdLoader cmd_loader_;
   core::CmdProcessor cmd_processor_;
   core::HistoryManager cmd_history_;
   core::HistoryManager search_history_;

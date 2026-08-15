@@ -32,6 +32,10 @@ Cmdline::Cmdline(
   completions_.setCmdColor(utils::hexToRGB(settings::fg_));
   completions_.setDescColor(utils::hexToRGB(settings::completions_desc_fg_));
 
+  event_bus_.subscribe<bool>("cmd.clear_search", [this](bool) { search_history_.clear(); });
+
+  event_bus_.subscribe<bool>("cmd.clear_history", [this](bool) { cmd_history_.clear(); });
+
   event_bus_.subscribe<ui::UIElements>("ui.focus", [this](ui::UIElements focus) {
     visible_ = focus == ui::UIElements::Cmdline;
     if (visible_) {
@@ -188,24 +192,24 @@ void Cmdline::reset() {
 }
 
 void Cmdline::refreshCompletions() {
-  const auto &list = cmd_processor_.complete(utf8::utf32to8(original_string_));
-
-  if (list.empty()) {
-    completions_.clear();
-    completions_.hide();
-    return;
-  }
-
-  if (list.size() == 1) {
-    textbox_.setText(utf8::utf8to32(list[0].first));
-    completions_.clear();
-    completions_.hide();
-    return;
-  }
-
-  completions_.setCompletionList(list);
-  completions_.show();
-  textbox_.setText(utf8::utf8to32(completions_.getSelectedText()));
+  // const auto &list = cmd_processor_.complete(utf8::utf32to8(original_string_));
+  //
+  // if (list.empty()) {
+  //   completions_.clear();
+  //   completions_.hide();
+  //   return;
+  // }
+  //
+  // if (list.size() == 1) {
+  //   textbox_.setText(utf8::utf8to32(list[0].first));
+  //   completions_.clear();
+  //   completions_.hide();
+  //   return;
+  // }
+  //
+  // completions_.setCompletionList(list);
+  // completions_.show();
+  // textbox_.setText(utf8::utf8to32(completions_.getSelectedText()));
 }
 
 } // namespace ui

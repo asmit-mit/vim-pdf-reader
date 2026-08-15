@@ -10,7 +10,7 @@
 App::App()
     : font_regular_(settings::font_regular), font_bold_(settings::font_bold),
       font_italic_(settings::font_italic), document_(), renderer_(),
-      cmd_processor_(event_bus_, cmd_history_, search_history_, file_history_),
+      cmd_loader_("./config/commands.json"), cmd_processor_(event_bus_, cmd_loader_, cmd_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
       cmdline_textbox_(font_library_, glyph_atlas_, utils::char_size, ":"),
       cmdline_completions_(font_library_, glyph_atlas_, font_regular_, font_italic_, utils::char_size),
@@ -76,7 +76,8 @@ void App::initHistory() {
   cmd_history_.setPath(state_dir_ + "/cmd_history");
   file_history_.setPath(state_dir_ + "/recent_files");
   search_history_.setPath(state_dir_ + "/search_history");
-  search_history_.setSaveUnique(true);
+
+  file_history_.setSaveUnique(true);
 }
 
 void App::initWindow() {
