@@ -7,15 +7,21 @@
 
 namespace ui {
 
+struct PDFSearchResult {
+  std::vector<fz_rect> local_rects;
+  std::size_t start;
+};
+
 class PageView : public Widget {
 public:
-  PageView(const sf::Texture &dummy, std::vector<sf::RectangleShape> &boxes);
+  PageView(const sf::Texture &dummy);
 
   void draw(sf::RenderTarget &window) const override;
-  void update() override {};
+  void update() override;
 
   sf::Sprite &getSprite();
 
+  void move(const sf::Vector2f &delta);
   void setPosition(const sf::Vector2f &position);
   sf::Vector2f getPosition() const;
   sf::FloatRect getGlobalBounds() const;
@@ -30,19 +36,30 @@ public:
   void setTexture(const sf::Texture &texture);
   void reset();
 
-  void showSelectionBoxes();
-  void hideSelectionBoxes();
+  void setSearchResults(PDFSearchResult search_results);
+  void clearSearchResults();
+
+  void showSearchResults();
+  void hideSearchResults();
+
+  void syncPageShapePos();
+  void syncPageShape(int rot);
 
   bool hasTexture() const;
   bool isInView(const sf::Vector2f &window_size) const;
 
 private:
-  std::vector<sf::RectangleShape> &selection_boxes_;
+  PDFSearchResult search_result_;
+  sf::VertexArray search_boxes_{sf::PrimitiveType::Triangles};
+
+  sf::RectangleShape original_shape_;
   sf::Sprite sprite_;
   pdf::PDFRenderKey key_;
 
   bool active_;
-  bool show_selection_boxes_;
+  bool show_search_boxes_;
+  bool first_texture_set_;
+  bool update_search_boxes_;
 };
 
 } // namespace ui

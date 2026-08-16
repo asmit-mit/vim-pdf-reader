@@ -77,9 +77,8 @@ bool PDFPage::isContentLoaded() const {
   return content_loaded;
 }
 
-std::vector<std::vector<fz_rect>> PDFPage::searchText(const std::u32string &pattern) const {
-  std::vector<std::vector<fz_rect>> results;
-
+std::vector<fz_rect> PDFPage::searchText(const std::u32string &pattern) const {
+  std::vector<fz_rect> results;
   if (pattern.empty())
     return results;
 
@@ -104,12 +103,11 @@ std::vector<std::vector<fz_rect>> PDFPage::searchText(const std::u32string &patt
 
     const std::size_t pos = static_cast<std::size_t>(it - text_normalized.begin());
 
-    std::vector<fz_rect> match;
-    match.reserve(normalized_pattern.size());
-    for (std::size_t i = pos; i < pos + normalized_pattern.size(); ++i)
-      match.push_back(glyphs[i]);
+    fz_rect merged = glyphs[pos];
+    for (std::size_t i = pos + 1; i < pos + normalized_pattern.size(); ++i)
+      merged = fz_union_rect(merged, glyphs[i]);
+    results.push_back(merged);
 
-    results.push_back(std::move(match));
     std::advance(it, normalized_pattern.size());
   }
 

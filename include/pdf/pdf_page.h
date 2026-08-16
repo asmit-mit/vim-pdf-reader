@@ -30,7 +30,7 @@ struct PDFPage {
   void loadContent(fz_stext_page *page_text);
   bool isContentLoaded() const;
 
-  std::vector<std::vector<fz_rect>> searchText(const std::u32string &pattern) const;
+  std::vector<fz_rect> searchText(const std::u32string &pattern) const;
 
 private:
   mutable std::mutex mutex_;

@@ -1,8 +1,8 @@
-#include <filesystem>
 #include <stdexcept>
 #include <utf8.h>
 
 #include "pdf/pdf_renderer.h"
+#include "ui/page_view.h"
 #include "ui/pdf_view.h"
 #include "ui/ui_elements.h"
 #include "utils/settings.h"
@@ -39,7 +39,14 @@ PDFView::PDFView(
     onOpenDocument(filepath);
   });
 
-  event_bus_.subscribe<bool>("cmd.reload_document", [this](bool) { onOpenDocument(filepath_); });
+  event_bus_.subscribe<bool>("cmd.reload_document", [this](bool) {
+    if (!has_document_) {
+      event_bus_.emit("notification.msg", std::string("No document open to reload"));
+      return;
+    }
+
+    onOpenDocument(filepath_);
+  });
 
   event_bus_.subscribe<bool>("cmd.close_document", [this](bool) { onCloseDocument(); });
 
@@ -47,7 +54,7 @@ PDFView::PDFView(
     onSwitchPage(page_num - 1);
   });
 
-  event_bus_.subscribe<const std::string &>("cmd.search", [this](const std::string &text) {
+  event_bus_.subscribe<const std::u32string &>("cmd.search", [this](const std::u32string &text) {
     onSearchPage(text);
   });
 
@@ -88,11 +95,16 @@ void PDFView::update() {
 
   if (page_positions_dirty_) {
     updatePagePositions();
+    for (std::size_t i = front_page_; i <= back_page_; i++)
+      pages_[i].syncPageShapePos();
     page_positions_dirty_ = false;
   }
 
   if (started_scrolling_)
     checkForAnchorPage();
+
+  for (std::size_t i = front_page_; i <= back_page_; i++)
+    pages_[i].update();
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
@@ -145,7 +157,7 @@ void PDFView::handleEvent(const sf::Event &event) {
     } else if (key->code == sf::Keyboard::Key::Escape) {
       show_search_result_boxes_ = false;
       for (std::size_t i = front_page_; i <= back_page_; i++)
-        pages_[i].hideSelectionBoxes();
+        pages_[i].hideSearchResults();
     }
   }
 }
@@ -209,26 +221,27 @@ void PDFView::onSwitchPage(int page_idx) {
   started_scrolling_ = false;
 }
 
-void PDFView::onSearchPage(const std::string &text) {
+void PDFView::onSearchPage(const std::u32string &text) {
   if (!has_document_) {
     event_bus_.emit("notification.msg", std::string("No document open to search"));
     return;
   }
-
   if (!document_.isAllContentLoaded())
     document_.loadAllContent();
 
-  std::u32string pattern;
-  for (char c : text)
-    pattern.push_back(static_cast<char32_t>(c));
-
+  std::size_t global_start = 0;
   for (std::size_t i = 0; i < document_.size(); i++) {
-    const auto &result = document_.getPage(i).searchText(pattern);
+    PDFSearchResult res;
+    res.start = global_start;
+    res.local_rects = document_.getPage(i).searchText(text);
+    pages_[i].setSearchResults(std::move(res));
+
+    global_start += res.local_rects.size();
   }
 
   show_search_result_boxes_ = true;
   for (std::size_t i = front_page_; i <= back_page_; i++)
-    pages_[i].showSelectionBoxes();
+    pages_[i].showSearchResults();
 }
 
 void PDFView::setInitialPagePos() {
@@ -272,6 +285,7 @@ void PDFView::syncWithTargetState() {
     if (i != anchor_page_) {
       page.setScale({scale_x, scale_y});
       page.setRotation(delta);
+      page.syncPageShape(target_state_.rotate);
       continue;
     }
 
@@ -280,11 +294,12 @@ void PDFView::syncWithTargetState() {
 
     page.setScale({scale_x, scale_y});
     page.setRotation(delta);
+    page.syncPageShape(target_state_.rotate);
 
     if (delta == 0) {
       const auto &focus_after = page.getSprite().getTransform().transformPoint(local_focus);
       const auto &offset = window_center - focus_after;
-      page.getSprite().move(offset);
+      page.move(offset);
     }
   }
 }
@@ -295,13 +310,17 @@ void PDFView::renderRequestedPages() {
     if (!scheduler_.isReady(target_key))
       continue;
 
-    if (pages_[i].hasTexture() && pages_[i].getKey() == target_key)
+    if (pages_[i].hasTexture() && pages_[i].getKey() == target_key) {
+      pages_[i].syncPageShape(target_state_.rotate);
       continue;
+    }
 
     pages_[i].setTexture(*scheduler_.getTexture(target_key));
     pages_[i].setKey(target_key);
+
     pages_[i].setScale({1.f, 1.f});
     pages_[i].setRotation(0);
+
     sync_state_dirty_ = true;
     page_positions_dirty_ = true;
   }
@@ -323,14 +342,14 @@ void PDFView::updatePagePositions() {
       const sf::Vector2f old_center{old_window_size_.x * 0.5f, old_window_size_.y * 0.5f};
       const auto &local_focus = curr.getSprite().getInverseTransform().transformPoint(old_center);
       const auto &focus_after = curr.getSprite().getTransform().transformPoint(local_focus);
-      curr.getSprite().move(new_center - focus_after);
+      curr.move(new_center - focus_after);
     }
 
     window_size_changed_ = false;
   }
 
   clampAnchorHorizontally();
-  putPageInNonFracPos(curr);
+  discretizePosition(curr);
   updateNeighbourPositions();
 
   const sf::Vector2f front_size = pages_[front_page_].getGlobalBounds().size;
@@ -341,24 +360,26 @@ void PDFView::updatePagePositions() {
   const float bottom_limit = window_size_.y - utils::cmdline_height_;
   const float curr_y = curr.getPosition().y;
 
-  if (front_page_ == back_page_ && front_size.y < window_size_.y) {
-    curr.setPosition({window_size_.x * 0.5f, window_size_.y * 0.5f - utils::cmdline_height_});
+  const float total_height = back_bottom - front_top;
+  if (total_height < bottom_limit) {
+    const float offset = (bottom_limit * 0.5f) - (front_top + total_height * 0.5f);
+    curr.setPosition({curr.getPosition().x, curr_y + offset});
   } else if (front_top > 0.f) {
     curr.setPosition({curr.getPosition().x, curr_y - front_top});
   } else if (back_bottom < bottom_limit) {
     curr.setPosition({curr.getPosition().x, curr_y + (bottom_limit - back_bottom)});
   } else {
-    putPageInNonFracPos(curr);
+    discretizePosition(curr);
     return;
   }
 
-  putPageInNonFracPos(curr);
+  discretizePosition(curr);
   updateNeighbourPositions();
 }
 
 void PDFView::checkForAnchorPage() {
   const sf::Vector2f window_center = {window_size_.x * 0.5f, window_size_.y * 0.5f};
-  for (std::size_t i = front_page_; i < back_page_; i++) {
+  for (std::size_t i = front_page_; i <= back_page_; i++) {
     if (pages_[i].getSprite().getGlobalBounds().contains(window_center)) {
       if (anchor_page_ != i && (started_scrolling_ && pages_[anchor_page_].getPosition() !=
                                                           anchor_page_pos_before_scroll_)) {
@@ -382,6 +403,7 @@ void PDFView::setZoom(float new_zoom) {
   target_state_.zoom = clamped;
   scale_rot_update_timer_.restart();
   pending_page_update_ = true;
+
   sync_state_dirty_ = true;
 }
 
@@ -396,6 +418,7 @@ void PDFView::setRotate(int rotate) {
   target_state_.rotate = clamped;
   scale_rot_update_timer_.restart();
   pending_page_update_ = true;
+
   sync_state_dirty_ = true;
 }
 
@@ -428,7 +451,7 @@ void PDFView::updateNeighbourPositions() {
 }
 
 void PDFView::clampAnchorHorizontally() {
-  auto &sprite = pages_[anchor_page_].getSprite();
+  auto &page = pages_[anchor_page_];
 
   const float window_w = window_size_.x;
   const float page_w = static_cast<float>(
@@ -436,7 +459,7 @@ void PDFView::clampAnchorHorizontally() {
   );
   const float half_w = page_w * 0.5f;
 
-  sf::Vector2f pos = sprite.getPosition();
+  sf::Vector2f pos = page.getPosition();
 
   if (page_w <= window_w) {
     pos.x = window_w * 0.5f;
@@ -446,17 +469,17 @@ void PDFView::clampAnchorHorizontally() {
     pos.x = std::clamp(pos.x, min_x, max_x);
   }
 
-  sprite.setPosition(pos);
+  page.setPosition(pos);
 }
 
-void PDFView::putPageInNonFracPos(PageView &page) {
-  const auto &loc = page.getSprite().getPosition();
-  page.getSprite().setPosition({0.f, 0.f});
+void PDFView::discretizePosition(PageView &page) {
+  const auto &loc = page.getPosition();
+  page.setPosition({0.f, 0.f});
   const sf::Vector2f offset = page.getSprite().getTransform().transformPoint({0.f, 0.f});
 
   const float x = std::round(loc.x + offset.x) - offset.x;
   const float y = std::round(loc.y + offset.y) - offset.y;
-  page.getSprite().setPosition({x, y});
+  page.setPosition({x, y});
 }
 
 float PDFView::map(float value, float src_min, float src_max, float dst_min, float dst_max) {
@@ -476,7 +499,7 @@ void PDFView::panCurrentPage(sf::Vector2f delta) {
     started_scrolling_ = true;
   }
 
-  pages_[anchor_page_].getSprite().move(delta);
+  pages_[anchor_page_].move(delta);
   page_positions_dirty_ = true;
 }
 
@@ -532,7 +555,7 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
 
     scheduler_.request(key);
     if (show_search_result_boxes_)
-      pages_[i].showSelectionBoxes();
+      pages_[i].showSearchResults();
   }
 
   front_page_ = static_cast<std::size_t>(front);
@@ -541,10 +564,7 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
 
 void PDFView::resetView() {
   pages_.clear();
-  page_search_result_.resize(document_.size());
-  pages_.reserve(document_.size());
-  for (std::size_t i = 0; i < document_.size(); i++)
-    pages_.emplace_back(dummy_, page_search_result_[i].boxes);
+  pages_.resize(document_.size(), dummy_);
 
   need_initial_pos_ = true;
   window_size_changed_ = false;

@@ -10,11 +10,6 @@
 
 namespace ui {
 
-struct PDFSearchResult {
-  std::size_t start;
-  std::vector<sf::RectangleShape> boxes;
-};
-
 class PDFView {
 public:
   explicit PDFView(
@@ -34,7 +29,7 @@ private:
   void onOpenDocument(const std::string &filepath);
   void onCloseDocument();
   void onSwitchPage(int page_num);
-  void onSearchPage(const std::string &text);
+  void onSearchPage(const std::u32string &text);
 
   void syncWithTargetState();
   void setInitialPagePos();
@@ -48,7 +43,7 @@ private:
   void resetView();
   void panCurrentPage(sf::Vector2f delta);
 
-  void putPageInNonFracPos(PageView &page);
+  void discretizePosition(PageView &page);
   void updateNeighbourPositions();
   void clampAnchorHorizontally();
   float map(float value, float src_min, float src_max, float dst_min, float dst_max);
@@ -66,7 +61,6 @@ private:
 
 private:
   std::vector<PageView> pages_;
-  std::vector<PDFSearchResult> page_search_result_;
 
   core::EventBus &event_bus_;
   core::HistoryManager &file_history_;
