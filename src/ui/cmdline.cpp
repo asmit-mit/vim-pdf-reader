@@ -12,13 +12,14 @@ Cmdline::Cmdline(
     const sf::Font &font_normal,
     core::EventBus &event_bus,
     core::CmdProcessor &cmd_processor,
+    core::CmdAutocomplete &cmd_autocomplete,
     core::HistoryManager &cmd_history,
     core::HistoryManager &search_history,
     ui::Textbox &textbox,
     ui::Completions &completions
 )
-    : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_history_(cmd_history),
-      search_history_(search_history), font_(font_normal),
+    : event_bus_(event_bus), cmd_processor_(cmd_processor), cmd_autocomplete_(cmd_autocomplete),
+      cmd_history_(cmd_history), search_history_(search_history), font_(font_normal),
       label_(font_normal, ":", utils::char_size), textbox_(textbox), completions_(completions) {
   visible_ = false;
 
@@ -96,9 +97,9 @@ void Cmdline::handleEvent(const sf::Event &event) {
       } else if (key->code == sf::Keyboard::Key::Enter) {
         cmd_history_.add(textbox_.getText());
         try {
-          cmd_processor_.runCommand(utf8::utf32to8(textbox_.getText()));
+          cmd_processor_.runCommand(textbox_.getText());
         } catch (const std::runtime_error &e) {
-          event_bus_.emit("notification.msg", utf8::utf8to32(std::string(e.what())));
+          event_bus_.emit("notification.msg", std::string(e.what()));
         }
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
         reset();
@@ -115,7 +116,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
             completions_.moveUp();
           else
             completions_.moveDown();
-          textbox_.setText(utf8::utf8to32(completions_.getSelectedText()));
+          textbox_.setText(completions_.getSelectedText());
         }
         return;
       }
@@ -126,7 +127,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::Enter) {
         search_history_.add(textbox_.getText());
-        event_bus_.emit("cmd.search", textbox_.getText());
+        event_bus_.emit("cmd.search", textbox_.getTextU32());
         event_bus_.emit("ui.focus", ui::UIElements::PDFView);
       } else if (key->code == sf::Keyboard::Key::P && key->control) {
         textbox_.setText(search_history_.getPrevious());
@@ -188,7 +189,7 @@ void Cmdline::reset() {
 }
 
 void Cmdline::refreshCompletions() {
-  const auto &list = cmd_processor_.complete(utf8::utf32to8(original_string_));
+  auto list = cmd_autocomplete_.complete(original_string_);
 
   if (list.empty()) {
     completions_.clear();
@@ -197,15 +198,15 @@ void Cmdline::refreshCompletions() {
   }
 
   if (list.size() == 1) {
-    textbox_.setText(utf8::utf8to32(list[0].first));
+    textbox_.setText(list[0].cmd);
     completions_.clear();
     completions_.hide();
     return;
   }
 
-  completions_.setCompletionList(list);
+  completions_.setCompletionList(std::move(list));
   completions_.show();
-  textbox_.setText(utf8::utf8to32(completions_.getSelectedText()));
+  textbox_.setText(completions_.getSelectedText());
 }
 
 } // namespace ui

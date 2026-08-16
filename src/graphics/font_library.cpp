@@ -12,6 +12,14 @@ FontLibrary::FontLibrary() {
     throw std::runtime_error("Failed to initialize font library");
 }
 
+FontLibrary::FontLibrary(const std::vector<const char *> &paths) {
+  if (FT_Init_FreeType(&library_) != 0)
+    throw std::runtime_error("Failed to initialize font library");
+
+  for (int i = 0; i < paths.size(); i++)
+    tryLoadFont(static_cast<FontType>(i), paths[i]);
+}
+
 FontLibrary::~FontLibrary() {
   destroy();
 }

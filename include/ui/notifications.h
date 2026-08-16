@@ -25,10 +25,10 @@ public:
   void onResize(const sf::Vector2f &size);
 
 private:
-  void show(const std::u32string &msg);
+  void show(const std::string &msg);
   void layout();
-  std::u32string
-  wrapText(const std::u32string &raw, const sf::Font &font, unsigned int char_size, float max_width);
+  std::string
+  wrapText(const std::string &raw, const sf::Font &font, unsigned int char_size, float max_width);
 
 private:
   core::EventBus &event_bus_;

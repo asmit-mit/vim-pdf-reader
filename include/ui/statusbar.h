@@ -1,13 +1,19 @@
 #pragma once
 
 #include "core/event_bus.h"
+#include "graphics/rich_text.h"
 #include "ui/widget.h"
 
 namespace ui {
 
 class Statusbar : public Widget {
 public:
-  explicit Statusbar(const sf::Font &font, core::EventBus &event_bus);
+  explicit Statusbar(
+      graphics::FontLibrary &font_lib,
+      graphics::GlyphAtlas &glyph_atlas,
+      const sf::Font &font,
+      core::EventBus &event_bus
+  );
 
   void draw(sf::RenderTarget &window) const override;
   void update() override;
@@ -17,7 +23,7 @@ public:
 private:
   const sf::Font &font_;
   sf::RectangleShape display_area_;
-  sf::Text display_filepath_;
+  graphics::RichText display_filepath_;
   sf::Text display_page_num_;
   sf::Text display_zoom_;
 

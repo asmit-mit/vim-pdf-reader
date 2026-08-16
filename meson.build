@@ -1,6 +1,8 @@
 project('vim-pdf-reader', 'cpp', default_options: ['cpp_std=c++23'])
 project_name = meson.project_name()
 
+subdir('thirdparty/simdjson')
+
 sfml_dep = dependency('sfml-graphics', required: true)
 mupdf_dep = dependency('mupdf', required: true)
 gtk_dep = dependency('gtk4', required: true)
@@ -14,6 +16,8 @@ includes = include_directories('include')
 sources = files(
   'src/app.cpp',
   'src/core/cmd_processor.cpp',
+  'src/core/cmd_loader.cpp',
+  'src/core/cmd_autocomplete.cpp',
   'src/core/history_manager.cpp',
   'src/core/render_scheduler.cpp',
   'src/graphics/font_library.cpp',
@@ -39,5 +43,5 @@ executable(
   project_name,
   sources,
   include_directories: [includes, utf8cpp_includes],
-  dependencies: [sfml_dep, mupdf_dep, gtk_dep, harfbuzz_dep, harfbuzz_raster_dep, freetype_dep],
+  dependencies: [sfml_dep, mupdf_dep, gtk_dep, harfbuzz_dep, harfbuzz_raster_dep, freetype_dep, simdjson_dep],
 )

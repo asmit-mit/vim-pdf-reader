@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/cmd_autocomplete.h"
 #include "graphics/rich_text.h"
 #include "ui/widget.h"
 
@@ -34,13 +35,14 @@ public:
   void moveDown();
   std::string &getSelectedText();
 
-  void setCompletionList(const std::vector<std::pair<std::string, std::string>> &list);
+  void setCompletionList(std::vector<core::CmdAutocompleteItem> completions_);
   void clear();
 
 private:
-  std::vector<std::pair<std::string, std::string>> completions_;
+  std::vector<core::CmdAutocompleteItem> completions_;
   std::vector<graphics::RichText> display_cmd_list_;
   std::vector<sf::Text> display_desc_list_;
+
   sf::RectangleShape display_area_;
   sf::RectangleShape selected_cmd_area_;
   sf::RectangleShape selected_desc_area_;

@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 
+#include "core/cmd_autocomplete.h"
 #include "core/cmd_processor.h"
 #include "core/event_bus.h"
 #include "core/history_manager.h"
@@ -23,7 +24,8 @@ public:
 private:
   void initHistory();
   void initWindow();
-  void initApps();
+  void initUI();
+  void initFonts();
   void processEvents();
 
 private:
@@ -40,7 +42,9 @@ private:
   pdf::PDFRenderer renderer_;
 
   core::EventBus event_bus_;
+  core::CmdLoader cmd_loader_;
   core::CmdProcessor cmd_processor_;
+  core::CmdAutocomplete cmd_autocomplete_;
   core::HistoryManager cmd_history_;
   core::HistoryManager search_history_;
   core::HistoryManager file_history_;

@@ -16,20 +16,20 @@ public:
   void reset();
   void clear();
 
-  void add(const std::u32string &cmd);
+  void add(const std::string &cmd);
 
-  std::u32string getNext();
-  std::u32string getPrevious();
+  std::string getNext();
+  std::string getPrevious();
 
-  std::vector<std::u32string> getAll() const;
-  std::vector<std::u32string> getAllUnique() const;
+  std::vector<std::string> getAll() const;
+  std::vector<std::string> getAllUnique() const;
 
 private:
   void save();
 
 private:
-  std::deque<std::u32string> history_;
-  std::unordered_set<std::u32string> history_set_;
+  std::deque<std::string> history_;
+  std::unordered_set<std::string> history_set_;
 
   static constexpr std::size_t max_size_ = 100;
   std::size_t curr_idx_ = 0;

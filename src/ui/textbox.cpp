@@ -1,4 +1,7 @@
 #include "ui/textbox.h"
+
+#include <utf8.h>
+
 #include "utils/settings.h"
 #include "utils/utils.h"
 
@@ -51,8 +54,9 @@ void Textbox::update() {
   selection_dirty_ |= text_dirty_;
 
   if (text_dirty_) {
-    display_text_.setString(text_);
+    display_text_.setString(u32_text_);
     display_text_.setPosition(pos_);
+    text_ = utf8::utf32to8(u32_text_);
     text_dirty_ = false;
   }
 
@@ -117,7 +121,7 @@ void Textbox::handleEvent(const sf::Event &event) {
           deleteSelection();
 
         auto clip = sf::Clipboard::getString().toUtf32();
-        text_.insert(selection_.caret, clip);
+        u32_text_.insert(selection_.caret, clip);
 
         setCursorPosition(selection_.caret + clip.size());
         clearSelection();
@@ -174,7 +178,7 @@ void Textbox::handleEvent(const sf::Event &event) {
       if (selection_.active())
         deleteSelection();
 
-      text_.insert(text_.begin() + selection_.caret, static_cast<char32_t>(text->unicode));
+      u32_text_.insert(u32_text_.begin() + selection_.caret, static_cast<char32_t>(text->unicode));
 
       setCursorPosition(selection_.caret + 1);
       clearSelection();
@@ -245,11 +249,11 @@ void Textbox::stopEditing() {
 }
 
 std::size_t Textbox::size() {
-  return text_.size();
+  return u32_text_.size();
 }
 
 void Textbox::clear() {
-  text_.clear();
+  u32_text_.clear();
   text_dirty_ = true;
 }
 
@@ -259,19 +263,27 @@ void Textbox::reset() {
   selection_.anchor = 0;
 }
 
+void Textbox::setText(const std::string &text) {
+  setText(utf8::utf8to32(text));
+}
+
 void Textbox::setText(const std::u32string &text) {
-  text_ = text;
-  setCursorPosition(text_.size());
+  u32_text_ = text;
+  setCursorPosition(u32_text_.size());
   clearSelection();
   text_dirty_ = true;
 }
 
-const std::u32string &Textbox::getText() const {
+const std::string &Textbox::getText() const {
   return text_;
 }
 
+const std::u32string &Textbox::getTextU32() const {
+  return u32_text_;
+}
+
 void Textbox::setCursorPosition(int pos) {
-  selection_.caret = std::clamp(pos, 0, (int)text_.size());
+  selection_.caret = std::clamp(pos, 0, (int)u32_text_.size());
   cursor_dirty_ = true;
 }
 
@@ -280,30 +292,30 @@ std::size_t Textbox::getCursorPosition() const {
 }
 
 std::size_t Textbox::findWordStart(std::size_t pos) const {
-  while (pos > 0 && std::isspace(static_cast<unsigned char>(text_[pos - 1])))
+  while (pos > 0 && std::isspace(static_cast<unsigned char>(u32_text_[pos - 1])))
     --pos;
 
-  while (pos > 0 && !std::isalnum(static_cast<unsigned char>(text_[pos - 1])) &&
-         text_[pos - 1] != '_' && !std::isspace(static_cast<unsigned char>(text_[pos - 1])))
+  while (pos > 0 && !std::isalnum(static_cast<unsigned char>(u32_text_[pos - 1])) &&
+         u32_text_[pos - 1] != '_' && !std::isspace(static_cast<unsigned char>(u32_text_[pos - 1])))
     --pos;
 
-  while (pos > 0 &&
-         (std::isalnum(static_cast<unsigned char>(text_[pos - 1])) || text_[pos - 1] == '_'))
+  while (pos > 0 && (std::isalnum(static_cast<unsigned char>(u32_text_[pos - 1])) ||
+                     u32_text_[pos - 1] == '_'))
     --pos;
 
   return pos;
 }
 
 std::size_t Textbox::findWordEnd(std::size_t pos) const {
-  while (pos < text_.size() && std::isspace(static_cast<unsigned char>(text_[pos])))
+  while (pos < u32_text_.size() && std::isspace(static_cast<unsigned char>(u32_text_[pos])))
     ++pos;
 
-  while (pos < text_.size() && !std::isalnum(static_cast<unsigned char>(text_[pos])) &&
-         text_[pos] != '_' && !std::isspace(static_cast<unsigned char>(text_[pos])))
+  while (pos < u32_text_.size() && !std::isalnum(static_cast<unsigned char>(u32_text_[pos])) &&
+         u32_text_[pos] != '_' && !std::isspace(static_cast<unsigned char>(u32_text_[pos])))
     ++pos;
 
-  while (pos < text_.size() &&
-         (std::isalnum(static_cast<unsigned char>(text_[pos])) || text_[pos] == '_'))
+  while (pos < u32_text_.size() &&
+         (std::isalnum(static_cast<unsigned char>(u32_text_[pos])) || u32_text_[pos] == '_'))
     ++pos;
 
   return pos;
@@ -313,19 +325,19 @@ void Textbox::backspace() {
   if (selection_.caret == 0)
     return;
 
-  text_.erase(text_.begin() + selection_.caret - 1);
+  u32_text_.erase(u32_text_.begin() + selection_.caret - 1);
   setCursorPosition(selection_.caret - 1);
   clearSelection();
   text_dirty_ = true;
 }
 
 void Textbox::del() {
-  if (selection_.caret >= text_.size()) {
+  if (selection_.caret >= u32_text_.size()) {
     backspace();
     return;
   }
 
-  text_.erase(text_.begin() + selection_.caret);
+  u32_text_.erase(u32_text_.begin() + selection_.caret);
   clearSelection();
   text_dirty_ = true;
 }
@@ -335,20 +347,20 @@ void Textbox::ctrlBackspace() {
     return;
 
   std::size_t start = findWordStart(selection_.caret);
-  text_.erase(start, selection_.caret - start);
+  u32_text_.erase(start, selection_.caret - start);
   setCursorPosition(start);
   clearSelection();
   text_dirty_ = true;
 }
 
 void Textbox::ctrlDel() {
-  if (selection_.caret >= text_.size()) {
+  if (selection_.caret >= u32_text_.size()) {
     ctrlBackspace();
     return;
   }
 
   std::size_t end = findWordEnd(selection_.caret);
-  text_.erase(selection_.caret, end - selection_.caret);
+  u32_text_.erase(selection_.caret, end - selection_.caret);
   clearSelection();
   text_dirty_ = true;
 }
@@ -365,7 +377,7 @@ void Textbox::ctrlArrowRight() {
 
 void Textbox::selectAll() {
   selection_.anchor = 0;
-  setCursorPosition(text_.size());
+  setCursorPosition(u32_text_.size());
 
   selection_dirty_ = true;
   cursor_dirty_ = true;
@@ -419,7 +431,7 @@ void Textbox::rebuildDisplayTexts() {
   const auto first = selection_.begin();
   const auto last = selection_.end();
 
-  std::u32string selected = text_.substr(first, last - first);
+  std::u32string selected = u32_text_.substr(first, last - first);
   display_text_selected_.setString(selected);
 
   sf::Vector2f pos = {getCursorX(first), pos_.y};
@@ -432,7 +444,7 @@ void Textbox::deleteSelection() {
 
   const auto first = selection_.begin();
   const auto last = selection_.end();
-  text_.erase(first, last - first);
+  u32_text_.erase(first, last - first);
 
   setCursorPosition(first);
   clearSelection();
@@ -449,7 +461,7 @@ void Textbox::clearSelection() {
 std::u32string Textbox::getSelectedText() const {
   const auto first = selection_.begin();
   const auto last = selection_.end();
-  return text_.substr(first, last - first);
+  return u32_text_.substr(first, last - first);
 }
 
 } // namespace ui

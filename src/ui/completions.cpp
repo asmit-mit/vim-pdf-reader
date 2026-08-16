@@ -58,8 +58,8 @@ void Completions::update() {
   if (list_dirty_) {
     std::size_t row = 0;
     for (std::size_t i = first_visible_; i < last; ++i, ++row) {
-      display_cmd_list_[row].setString(utf8::utf8to32(completions_[i].first));
-      display_desc_list_[row].setString(completions_[i].second);
+      display_cmd_list_[row].setString(completions_[i].name);
+      display_desc_list_[row].setString(completions_[i].description);
     }
 
     list_dirty_ = false;
@@ -119,9 +119,9 @@ void Completions::setPosition(const sf::Vector2f &pos) {
   display_area_.setPosition(pos);
 }
 
-void Completions::setCompletionList(const std::vector<std::pair<std::string, std::string>> &list) {
+void Completions::setCompletionList(std::vector<core::CmdAutocompleteItem> list) {
   clear();
-  completions_ = list;
+  completions_ = std::move(list);
 
   float height = std::min(max_list_items_, list.size()) * utils::cmdline_height_;
   display_area_.setSize({window_size_.x, height});
@@ -188,7 +188,7 @@ void Completions::hide() {
 }
 
 std::string &Completions::getSelectedText() {
-  return completions_[selected_].first;
+  return completions_[selected_].cmd;
 }
 
 } // namespace ui

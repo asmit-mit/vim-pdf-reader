@@ -1,0 +1,79 @@
+[
+  {
+    "name": "open",
+    "args": 2,
+    "event": "cmd.open_document",
+    "description": "Open document with absolute path",
+    "children": []
+  },
+  {
+    "name": "reload",
+    "args": 1,
+    "event": "cmd.reload_document",
+    "description": "Reload current document",
+    "children": []
+  },
+  {
+    "name": "close",
+    "args": 1,
+    "event": "cmd.close_document",
+    "description": "Close current document",
+    "children": []
+  },
+  {
+    "name": "clear",
+    "args": 2,
+    "description": "Clear history or recent files",
+    "children": [
+      {
+        "name": "files",
+        "event": "cmd.clear_files",
+        "description": "Clear file history",
+        "children": []
+      },
+      {
+        "name": "search",
+        "event": "cmd.clear_search",
+        "description": "Clear search history",
+        "children": []
+      },
+      {
+        "name": "history",
+        "event": "cmd.clear_history",
+        "description": "Clear command history",
+        "children": []
+      }
+    ]
+  },
+  {
+    "name": "quit",
+    "event": "cmd.quit",
+    "args": 1,
+    "description": "Quit app",
+    "children": []
+  },
+  {
+    "name": "bdelete",
+    "args": 2,
+    "description": "Delete bookmark",
+    "children": []
+  },
+  {
+    "name": "bmark",
+    "args": 1,
+    "description": "Set bookmark",
+    "children": []
+  },
+  {
+    "name": "blist",
+    "args": 1,
+    "description": "List bookmarks",
+    "children": []
+  },
+  {
+    "name": "bjump",
+    "args": 2,
+    "description": "Jump to bookmark",
+    "children": []
+  }
+]

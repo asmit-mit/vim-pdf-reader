@@ -1,30 +1,26 @@
 #pragma once
 
-#include <unordered_map>
-
-#include "core/history_manager.h"
+#include "core/cmd_loader.h"
 #include "core/event_bus.h"
-#include "utils/trie.h"
+#include "core/history_manager.h"
 
 namespace core {
 
 class CmdProcessor {
 public:
-  CmdProcessor(EventBus &event_bus, HistoryManager &cmd_history, HistoryManager &search_history, HistoryManager &file_history);
+  CmdProcessor(EventBus &event_bus, const CmdLoader &cmd_loader, HistoryManager &cmd_history);
 
   void runCommand(const std::string &cmd);
-  std::vector<std::pair<std::string, std::string>> complete(const std::string &prefix);
 
 private:
+  void tokenize(const std::string &cmd, std::vector<std::string> &argv);
+
+private:
+  const CmdLoader &cmd_loader_;
+
   HistoryManager &cmd_history_;
-  HistoryManager &search_history_;
-  HistoryManager &file_history_;
 
   core::EventBus &event_bus_;
-  utils::Trie autocomplete_;
-
-  std::vector<std::string> cmd_names_;
-  std::unordered_map<std::string, std::pair<int, std::string>> commands_;
 };
 
 } // namespace core
