@@ -2,7 +2,6 @@
 
 #include "pdf/pdf_document.h"
 
-
 namespace pdf {
 
 PDFDocument::PDFDocument() {
@@ -73,6 +72,7 @@ void PDFDocument::closeDocument() {
   }
 
   pages_.clear();
+  all_content_loaded_ = false;
 }
 
 std::size_t PDFDocument::pageWithMaxWidth() const {
