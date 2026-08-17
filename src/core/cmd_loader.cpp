@@ -61,6 +61,10 @@ CmdLoader::parseCmd(simdjson::dom::element obj, const std::string &parent_key, i
   if (obj["event"].get_string().get(event) == simdjson::SUCCESS)
     cmd.event = std::string(event);
 
+  int64_t cmd_type;
+  if (obj["cmp_type"].get_int64().get(cmd_type) == simdjson::SUCCESS)
+    cmd.cmp_type = static_cast<int32_t>(cmd_type);
+
   std::string scoped_key = parent_key.empty() ? cmd.name : parent_key + "." + cmd.name;
   size_t idx = commands_.size();
   if (depth == 0)

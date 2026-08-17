@@ -13,6 +13,7 @@ void PageView::draw(sf::RenderTarget &window) const {
     return;
 
   window.draw(sprite_);
+  // window.draw(original_shape_);
 
   if (!show_search_boxes_)
     return;
@@ -22,9 +23,8 @@ void PageView::draw(sf::RenderTarget &window) const {
 
 void PageView::update() {
   if (show_search_boxes_ && update_search_boxes_) {
-    original_shape_.setPosition(sprite_.getPosition());
-
     search_boxes_.clear();
+
     const sf::Color color{255, 255, 0, 80};
     for (std::size_t i = 0; i < search_result_.local_rects.size(); i++) {
       const auto &rect = search_result_.local_rects[i];

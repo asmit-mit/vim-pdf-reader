@@ -183,7 +183,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     onSwitchPage(anchor_page_);
     page_with_max_width_ = document_.pageWithMaxWidth();
 
-    event_bus_.emit("statusbar.pdf_path", utils::resolvePath(filepath));
+    event_bus_.emit("statusbar.pdf_path", absolute_path);
     event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
     event_bus_.emit("statusbar.total_pages", document_.size());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);

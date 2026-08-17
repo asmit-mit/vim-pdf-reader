@@ -6,6 +6,11 @@
 
 namespace core {
 
+enum class CmdAutocompleteType : int {
+  Subcommand,
+  Files,
+};
+
 struct CmdAutocompleteItem {
   std::string name;
   std::string cmd;
@@ -21,6 +26,18 @@ public:
 private:
   void tokenize(const std::string &input, std::vector<std::string> &argv);
   void push(const Cmd *cmd, const std::string &full_cmd, std::vector<CmdAutocompleteItem> &results);
+
+  void getSubcmdCmp(
+      const std::string &scoped_key,
+      const std::string &typing,
+      std::vector<CmdAutocompleteItem> &results
+  );
+
+  void getFileCmp(
+      const std::string &scoped_key,
+      const std::string &typing,
+      std::vector<CmdAutocompleteItem> &results
+  );
 
 private:
   utils::Trie trie_;

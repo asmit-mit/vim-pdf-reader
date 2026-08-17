@@ -4,7 +4,8 @@
     "args": 2,
     "event": "cmd.open_document",
     "description": "Open document with absolute path",
-    "children": []
+    "children": [],
+    "cmp_type": 1
   },
   {
     "name": "reload",
@@ -23,7 +24,7 @@
   {
     "name": "clear",
     "args": 2,
-    "description": "Clear history or recent files",
+    "description": "Clear file, command or search history",
     "children": [
       {
         "name": "files",

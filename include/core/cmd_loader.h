@@ -16,6 +16,7 @@ struct Cmd {
   std::optional<std::string> event;
   std::string description;
   std::vector<size_t> children;
+  int cmp_type = 0;
 };
 
 class CmdLoader {
