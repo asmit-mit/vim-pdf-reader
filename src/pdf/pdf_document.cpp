@@ -108,7 +108,7 @@ void PDFDocument::loadPageContent(std::size_t idx) {
   fz_catch(ctx_) throw std::runtime_error("Failed to load text from page");
 }
 
-std::size_t PDFDocument::size() const {
+std::size_t PDFDocument::pageCount() const {
   return pages_.size();
 }
 

@@ -1,8 +1,4 @@
 #include "app.h"
-#include "core/cmd_autocomplete.h"
-#include "core/render_scheduler.h"
-#include "graphics/font_library.h"
-#include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
 
@@ -18,7 +14,8 @@ App::App()
                                                 settings::font_cjk}
                                            ),
       document_(), renderer_(), cmd_loader_(settings::commands_json),
-      cmd_processor_(event_bus_, cmd_loader_, cmd_history_), cmd_autocomplete_(cmd_loader_),
+      cmd_processor_(event_bus_, cmd_loader_, cmd_history_),
+      cmd_autocomplete_(cmd_loader_, file_history_),
       render_scheduler_(document_, renderer_, settings::thread_count_),
       cmdline_textbox_(font_library_, glyph_atlas_, utils::char_size, ":"),
       cmdline_completions_(font_library_, glyph_atlas_, font_regular_, font_italic_, utils::char_size),

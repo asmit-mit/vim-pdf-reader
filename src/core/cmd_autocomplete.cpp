@@ -8,7 +8,8 @@
 
 namespace core {
 
-CmdAutocomplete::CmdAutocomplete(const CmdLoader &cmd_loader) : cmd_loader_(cmd_loader) {
+CmdAutocomplete::CmdAutocomplete(const CmdLoader &cmd_loader, const HistoryManager &file_history)
+    : cmd_loader_(cmd_loader), file_history_(file_history) {
   for (const Cmd *cmd : cmd_loader_.getRootCmds())
     trie_.insert(cmd->name);
 }
@@ -103,6 +104,12 @@ void CmdAutocomplete::getFileCmp(
   std::string resolved = utils::resolvePath(typing);
   std::string top_cmd = scoped_key;
   std::replace(top_cmd.begin(), top_cmd.end(), '.', ' ');
+
+  if (typing.empty()) {
+    for (const auto &file : file_history_.getAllUnique())
+      results.push_back({file, top_cmd + " " + file, ""});
+    return;
+  }
 
   std::string dir;
   std::string prefix;

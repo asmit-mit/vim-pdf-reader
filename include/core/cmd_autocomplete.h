@@ -1,5 +1,6 @@
 #pragma once
 #include "core/cmd_loader.h"
+#include "core/history_manager.h"
 #include "utils/trie.h"
 #include <string>
 #include <vector>
@@ -19,7 +20,7 @@ struct CmdAutocompleteItem {
 
 class CmdAutocomplete {
 public:
-  explicit CmdAutocomplete(const CmdLoader &cmd_loader);
+  explicit CmdAutocomplete(const CmdLoader &cmd_loader, const HistoryManager &file_history);
 
   std::vector<CmdAutocompleteItem> complete(const std::string &prefix);
 
@@ -42,6 +43,7 @@ private:
 private:
   utils::Trie trie_;
   const CmdLoader &cmd_loader_;
+  const HistoryManager &file_history_;
 };
 
 } // namespace core

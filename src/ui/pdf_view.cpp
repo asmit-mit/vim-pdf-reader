@@ -122,7 +122,7 @@ void PDFView::handleEvent(const sf::Event &event) {
       if (key->control)
         panCurrentPage({0.f, -window_size_.y * 0.5f});
       else
-        onSwitchPage(std::min(document_.size() - 1, anchor_page_ + 1));
+        onSwitchPage(std::min(document_.pageCount() - 1, anchor_page_ + 1));
     } else if (key->code == sf::Keyboard::Key::Equal && key->control) {
       setZoom(target_state_.zoom + settings::delta_zoom_);
     } else if (key->code == sf::Keyboard::Key::Hyphen && key->control) {
@@ -185,7 +185,7 @@ void PDFView::onOpenDocument(const std::string &filepath) {
 
     event_bus_.emit("statusbar.pdf_path", absolute_path);
     event_bus_.emit("statusbar.page_number", anchor_page_ + 1);
-    event_bus_.emit("statusbar.total_pages", document_.size());
+    event_bus_.emit("statusbar.total_pages", document_.pageCount());
     event_bus_.emit("statusbar.page_zoom", target_state_.zoom);
 
     file_history_.add(absolute_path);
@@ -210,7 +210,7 @@ void PDFView::onSwitchPage(int page_idx) {
     event_bus_.emit("notification.msg", std::string("No document currently open"));
     return;
   }
-  if (page_idx < 0 || page_idx >= static_cast<int>(document_.size())) {
+  if (page_idx < 0 || page_idx >= static_cast<int>(document_.pageCount())) {
     event_bus_.emit("notification.msg", std::string("Page number out of range"));
     return;
   }
@@ -230,7 +230,7 @@ void PDFView::onSearchPage(const std::u32string &text) {
     document_.loadAllContent();
 
   std::size_t global_start = 0;
-  for (std::size_t i = 0; i < document_.size(); i++) {
+  for (std::size_t i = 0; i < document_.pageCount(); i++) {
     PDFSearchResult res;
     res.start = global_start;
     res.local_rects = document_.getPage(i).searchText(text);
@@ -517,7 +517,7 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
   while (total_height <= window_size_.y) {
     bool expanded = false;
 
-    if (back + 1 < static_cast<int>(document_.size())) {
+    if (back + 1 < static_cast<int>(document_.pageCount())) {
       back++;
       pdf::PDFRenderKey key{static_cast<size_t>(back), zoom, rotate};
       total_height += scheduler_.getPageSize(key).y;
@@ -536,7 +536,7 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
   }
 
   for (int i = 0; i < 3; i++) {
-    if (back + 1 < static_cast<int>(document_.size()))
+    if (back + 1 < static_cast<int>(document_.pageCount()))
       ++back;
 
     if (front > 0)
@@ -564,7 +564,7 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
 
 void PDFView::resetView() {
   pages_.clear();
-  pages_.resize(document_.size(), dummy_);
+  pages_.resize(document_.pageCount(), dummy_);
 
   need_initial_pos_ = true;
   window_size_changed_ = false;

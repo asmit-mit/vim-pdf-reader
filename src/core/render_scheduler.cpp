@@ -38,7 +38,7 @@ void RenderScheduler::request(const pdf::PDFRenderKey &key) {
     if (quiescing_)
       return;
 
-    if (key.page_idx >= document_.size())
+    if (key.page_idx >= document_.pageCount())
       throw std::out_of_range("Page index out of range");
 
     if (texture_cache_.contains(key))
@@ -67,7 +67,7 @@ const sf::Vector2u RenderScheduler::getPageSize(const pdf::PDFRenderKey &key) {
   if (quiescing_)
     throw std::runtime_error("Scheduler is quiescing; no document is currently valid");
 
-  if (key.page_idx >= document_.size())
+  if (key.page_idx >= document_.pageCount())
     throw std::out_of_range("Page index out of range");
 
   return renderer_.getPageSize(document_.getPage(key.page_idx).page_bounds, key);

@@ -31,7 +31,7 @@ public:
   void loadPageContent(std::size_t idx);
 
   std::size_t pageWithMaxWidth() const;
-  std::size_t size() const;
+  std::size_t pageCount() const;
 
   FzContextPtr cloneContext() const;
   fz_document *getDoc() const;
