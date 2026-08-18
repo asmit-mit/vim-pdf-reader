@@ -36,12 +36,17 @@ public:
   void setTexture(const sf::Texture &texture);
   void reset();
 
+  const PDFSearchResult &getSearchResults();
+  sf::Vector2f getSearchResultPosition(std::size_t idx);
+
+  void setSelectedSearchResult(std::size_t idx);
   void setSearchResults(PDFSearchResult search_results);
   void clearSearchResults();
 
   void showSearchResults();
   void hideSearchResults();
 
+  void setPageShapeSize(sf::Vector2f size);
   void syncPageShapePos();
   void syncPageShape(int rot);
 
@@ -56,10 +61,14 @@ private:
   sf::Sprite sprite_;
   pdf::PDFRenderKey key_;
 
+  std::size_t selected_search_result_;
+
   bool active_;
   bool show_search_boxes_;
-  bool first_texture_set_;
   bool update_search_boxes_;
+
+  sf::Color normal_color_;
+  sf::Color selected_color_;
 };
 
 } // namespace ui

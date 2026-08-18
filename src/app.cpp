@@ -132,10 +132,7 @@ void App::processEvents() {
         }
         if (key->code == sf::Keyboard::Key::Slash && focus_ != ui::UIElements::Cmdline) {
           event_bus_.emit("ui.focus", ui::UIElements::Cmdline);
-          if (key->shift)
-            cmdline_.setMode(ui::CmdlineMode::BackwardSearch);
-          else
-            cmdline_.setMode(ui::CmdlineMode::ForwardSearch);
+          cmdline_.setMode(ui::CmdlineMode::Search);
         }
       }
     }

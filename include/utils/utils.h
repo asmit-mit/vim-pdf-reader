@@ -15,6 +15,10 @@ inline sf::Color hexToRGB(const uint32_t hex) {
   return sf::Color((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
 }
 
+inline sf::Color hexToRGBA(const uint32_t hex) {
+  return sf::Color((hex >> 24) & 0xFF, (hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+}
+
 inline std::string resolvePath(std::string path) {
   if (path.starts_with("~/")) {
     if (const char *home = std::getenv("HOME"))

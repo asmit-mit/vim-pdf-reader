@@ -1,11 +1,17 @@
 #include "ui/page_view.h"
+#include "utils/settings.h"
+#include "utils/utils.h"
 
 namespace ui {
 
 PageView::PageView(const sf::Texture &dummy) : sprite_(dummy) {
   active_ = false;
   show_search_boxes_ = false;
-  first_texture_set_ = false;
+  update_search_boxes_ = false;
+  selected_search_result_ = -1;
+
+  normal_color_ = utils::hexToRGBA(settings::search_box_color_);
+  selected_color_ = utils::hexToRGBA(settings::search_highlight_color_);
 };
 
 void PageView::draw(sf::RenderTarget &window) const {
@@ -25,9 +31,10 @@ void PageView::update() {
   if (show_search_boxes_ && update_search_boxes_) {
     search_boxes_.clear();
 
-    const sf::Color color{255, 255, 0, 80};
     for (std::size_t i = 0; i < search_result_.local_rects.size(); i++) {
       const auto &rect = search_result_.local_rects[i];
+      const sf::Color &color = (i == selected_search_result_) ? selected_color_ : normal_color_;
+
       sf::Vector2f tl = {rect.x0, rect.y0};
       sf::Vector2f tr = {rect.x1, rect.y0};
       sf::Vector2f br = {rect.x1, rect.y1};
@@ -89,14 +96,6 @@ void PageView::setTexture(const sf::Texture &texture) {
   sprite_.setTexture(texture, true);
   const auto bounds = sprite_.getLocalBounds();
   sprite_.setOrigin({bounds.size.x * 0.5f, bounds.size.y * 0.5f});
-
-  if (!first_texture_set_) {
-    original_shape_.setSize(bounds.size);
-    original_shape_.setOrigin(sprite_.getOrigin());
-    original_shape_.setFillColor(sf::Color::Black);
-    first_texture_set_ = true;
-  }
-
   active_ = true;
 }
 
@@ -104,8 +103,22 @@ void PageView::reset() {
   active_ = false;
 }
 
+const PDFSearchResult &PageView::getSearchResults() {
+  return search_result_;
+}
+
+sf::Vector2f PageView::getSearchResultPosition(std::size_t idx) {
+  const auto &rect = search_result_.local_rects[idx];
+  sf::Vector2f center = {(rect.x0 + rect.x1) * 0.5f, (rect.y0 + rect.y1) * 0.5f};
+  return original_shape_.getTransform().transformPoint(center);
+}
+
+void PageView::setSelectedSearchResult(std::size_t idx) {
+  selected_search_result_ = idx;
+  update_search_boxes_ = true;
+}
+
 void PageView::setSearchResults(PDFSearchResult search_results) {
-  clearSearchResults();
   search_result_ = std::move(search_results);
   search_boxes_.resize(search_result_.local_rects.size());
 }
@@ -113,6 +126,7 @@ void PageView::setSearchResults(PDFSearchResult search_results) {
 void PageView::clearSearchResults() {
   search_result_.local_rects.clear();
   search_boxes_.clear();
+  selected_search_result_ = -1;
 }
 
 void PageView::showSearchResults() {
@@ -121,6 +135,12 @@ void PageView::showSearchResults() {
 
 void PageView::hideSearchResults() {
   show_search_boxes_ = false;
+}
+
+void PageView::setPageShapeSize(sf::Vector2f size) {
+  original_shape_.setSize(size);
+  original_shape_.setOrigin({size.x * 0.5f, size.y * 0.5f});
+  original_shape_.setFillColor(sf::Color::Black);
 }
 
 void PageView::syncPageShapePos() {
@@ -137,8 +157,12 @@ void PageView::syncPageShape(int rot) {
                                          : page_size_raw;
 
   const auto shape_size = original_shape_.getSize();
-  original_shape_.setScale({page_size.x / shape_size.x, page_size.y / shape_size.y});
 
+  const auto delta = page_size_raw - shape_size;
+  if (std::abs(delta.x) <= 1e-3 && std::abs(delta.y) <= 1e-3)
+    return;
+
+  original_shape_.setScale({page_size.x / shape_size.x, page_size.y / shape_size.y});
   update_search_boxes_ = true;
 }
 

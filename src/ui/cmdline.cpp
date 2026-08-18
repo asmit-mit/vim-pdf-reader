@@ -133,21 +133,7 @@ void Cmdline::handleEvent(const sf::Event &event) {
         textbox_.setText(search_history_.getPrevious());
       } else if (key->code == sf::Keyboard::Key::N && key->control) {
         textbox_.setText(search_history_.getNext());
-      } else if (key->code == sf::Keyboard::Key::N) {
-        if (key->shift) {
-          if (mode_ == CmdlineMode::ForwardSearch) {
-            // search backwrad
-          } else {
-            // search forward
-          }
-        } else {
-          if (mode_ == CmdlineMode::ForwardSearch) {
-            // search forward
-          } else {
-            // search backward
-          }
-        }
-      }
+      }    
     }
   }
 
@@ -158,10 +144,8 @@ void Cmdline::setMode(CmdlineMode mode) {
   mode_ = mode;
   if (mode_ == CmdlineMode::Cmd)
     label_.setString(":");
-  else if (mode_ == CmdlineMode::ForwardSearch)
+  else if (mode_ == CmdlineMode::Search)
     label_.setString("/");
-  else if (mode_ == CmdlineMode::BackwardSearch)
-    label_.setString("?");
 }
 
 void Cmdline::onResize(const sf::Vector2f &size) {

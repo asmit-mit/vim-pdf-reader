@@ -24,18 +24,22 @@ private:
   const sf::Font &font_;
   sf::RectangleShape display_area_;
   graphics::RichText display_filepath_;
-  sf::Text display_page_num_;
+  sf::Text display_search_state_;
+  sf::Text display_page_state_;
   sf::Text display_zoom_;
 
   core::EventBus &event_bus_;
 
-  std::size_t page_idx_;
+  std::size_t search_num_;
+  std::size_t total_search_results_;
+
+  std::size_t page_num_;
   std::size_t total_pages_;
+
   bool page_details_changed_;
+  bool search_details_changed_;
   bool move_up_;
   float curr_x_, curr_y_;
-
-  static constexpr float height_ = 24.0;
 };
 
 } // namespace ui

@@ -12,8 +12,7 @@ namespace ui {
 
 enum class CmdlineMode {
   Cmd = 0,
-  ForwardSearch,
-  BackwardSearch,
+  Search,
 };
 
 class Cmdline : public Widget {

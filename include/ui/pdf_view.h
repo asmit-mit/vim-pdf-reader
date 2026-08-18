@@ -28,7 +28,7 @@ public:
 private:
   void onOpenDocument(const std::string &filepath);
   void onCloseDocument();
-  void onSwitchPage(int page_num);
+  void onSwitchPage(int page_idx);
   void onSearchPage(const std::u32string &text);
 
   void syncWithTargetState();
@@ -42,6 +42,8 @@ private:
   void requestPage(std::size_t page_idx, float zoom, int rotate);
   void resetView();
   void panCurrentPage(sf::Vector2f delta);
+  void goNextPageWithResult();
+  void goPrevPageWithResult();
 
   void discretizePosition(PageView &page);
   void updateNeighbourPositions();
@@ -75,6 +77,11 @@ private:
   std::size_t front_page_;
   std::size_t back_page_;
 
+  std::size_t curr_search_result_;
+  std::size_t local_search_result_;
+  std::size_t total_search_results_;
+  std::vector<std::size_t> pages_with_search_results_;
+
   bool has_document_;
   bool should_take_input_;
   bool need_initial_pos_;
@@ -83,12 +90,12 @@ private:
   bool started_scrolling_;
   bool page_positions_dirty_;
   bool sync_state_dirty_;
+  bool search_pos_dirty_;
   bool show_search_result_boxes_;
 
   sf::Vector2f window_size_;
   sf::Vector2f old_window_size_;
   sf::Vector2f anchor_page_pos_before_scroll_;
-  sf::Keyboard::Key prev_key_ = sf::Keyboard::Key::Unknown;
 
   std::string filepath_;
   std::size_t page_with_max_width_;
