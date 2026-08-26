@@ -29,6 +29,8 @@ App::App()
   initFonts();
 
   event_bus_.subscribe<bool>("cmd.quit", [this](bool close) {
+    render_scheduler_.quiesce();
+    render_scheduler_.clearCache();
     renderer_.clearCache();
     document_.closeDocument();
     window_.close();

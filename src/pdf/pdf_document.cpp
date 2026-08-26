@@ -63,6 +63,8 @@ void PDFDocument::openDocument(const std::string &filepath) {
     fz_always(ctx_) fz_drop_page(ctx_, page);
     fz_catch(ctx_) throw std::runtime_error("Failed to inspect PDF page");
   }
+
+  filepath_ = filepath;
 }
 
 void PDFDocument::closeDocument() {
@@ -75,6 +77,12 @@ void PDFDocument::closeDocument() {
   all_content_loaded_ = false;
 }
 
+void PDFDocument::reloadDocument() {
+  if (filepath_.empty())
+    return;
+  openDocument(filepath_);
+}
+
 std::size_t PDFDocument::pageWithMaxWidth() const {
   if (!doc_)
     return 0;
@@ -85,7 +93,11 @@ PDFPage &PDFDocument::getPage(std::size_t page_idx) {
   return pages_[page_idx];
 }
 
-bool PDFDocument::isAllContentLoaded() {
+bool PDFDocument::isOpen() const {
+  return doc_;
+}
+
+bool PDFDocument::isAllContentLoaded() const {
   return all_content_loaded_;
 }
 

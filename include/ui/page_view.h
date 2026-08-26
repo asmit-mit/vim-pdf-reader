@@ -7,6 +7,11 @@
 
 namespace ui {
 
+struct VisualInfo {
+  float zoom = 1.f;
+  int rotate = 0;
+};
+
 struct PDFSearchResult {
   std::vector<fz_rect> local_rects;
   std::size_t start;
