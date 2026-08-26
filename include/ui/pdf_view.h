@@ -55,6 +55,7 @@ private:
   bool should_take_input_;
 
   sf::Vector2f window_size_;
+  sf::Keyboard::Key prev_key_;
 
   static constexpr float scrollwheel_width_ = 8.f;
   static constexpr float scroll_dist_ = 40.f;

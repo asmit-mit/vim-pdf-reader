@@ -1,12 +1,10 @@
-#include "pdf/pdf_search_controller.h"
-#include "ui/page_view.h"
+#include "ui/pdf_view.h"
 
 #include <algorithm>
 #include <stdexcept>
 #include <utf8.h>
 
 #include "pdf/pdf_renderer.h"
-#include "ui/pdf_view.h"
 #include "ui/ui_elements.h"
 #include "utils/settings.h"
 #include "utils/utils.h"
@@ -28,6 +26,8 @@ PDFView::PDFView(
   layout_manager_.setFrontPage(0);
   layout_manager_.setBackPage(0);
   layout_manager_.setPageWithMaxWidth(0);
+
+  prev_key_ = sf::Keyboard::Key::Unknown;
 
   event_bus_.subscribe<std::string>("cmd.open_document", [this](const std::string &filepath) {
     onOpenDocument(filepath);
@@ -155,8 +155,15 @@ void PDFView::handleEvent(const sf::Event &event) {
       layout_manager_.panCurrentPage({0.f, scroll_dist_});
     } else if (key->code == sf::Keyboard::Key::J) {
       layout_manager_.panCurrentPage({0.f, -scroll_dist_});
+    } else if (key->code == sf::Keyboard::Key::G) {
+      if (key->shift)
+        onSwitchPage(document_.pageCount() - 1);
+      else if (prev_key_ == sf::Keyboard::Key::G)
+        onSwitchPage(0);
+      else
+        prev_key_ = sf::Keyboard::Key::G;
     } else if (key->code == sf::Keyboard::Key::N) {
-      std::size_t page = -1;
+      int page = -1;
 
       if (key->shift)
         page = search_controller_.goPrev(layout_manager_.getAnchorPage());
@@ -197,6 +204,9 @@ void PDFView::handleEvent(const sf::Event &event) {
       std::size_t total = search_controller_.getTotalSearchResult();
       event_bus_.emit("statusbar.search_state", std::make_pair(curr, total));
     }
+
+    if (key->code != sf::Keyboard::Key::G)
+      prev_key_ = sf::Keyboard::Key::Unknown;
   }
 }
 
@@ -263,8 +273,7 @@ void PDFView::onSearchPage(const std::u32string &text) {
     return;
   }
 
-  std::size_t closest_page =
-      search_controller_.search(text, layout_manager_.getAnchorPage(), document_);
+  int closest_page = search_controller_.search(text, layout_manager_.getAnchorPage(), document_);
   std::size_t curr = search_controller_.getCurrSearchResult();
   std::size_t total = search_controller_.getTotalSearchResult();
 
