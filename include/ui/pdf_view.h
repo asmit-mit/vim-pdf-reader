@@ -7,6 +7,7 @@
 #include "core/render_scheduler.h"
 #include "pdf/pdf_document.h"
 #include "pdf/pdf_layout_manager.h"
+#include "pdf/pdf_search_controller.h"
 #include "pdf/pdf_view_controller.h"
 #include "ui/page_view.h"
 
@@ -34,16 +35,14 @@ private:
   void onSearchPage(const std::u32string &text);
 
   void renderRequestedPages();
-
   void requestPage(std::size_t page_idx, float zoom, int rotate);
   void resetView();
-  void goNextPageWithResult();
-  void goPrevPageWithResult();
 
 private:
   pdf::PDFDocument &document_;
   pdf::PDFLayoutManager layout_manager_;
   pdf::PDFViewController view_controller_;
+  pdf::PDFSearchController search_controller_;
 
   std::vector<PageView> pages_;
 
@@ -53,15 +52,7 @@ private:
 
   sf::Texture dummy_;
 
-  std::size_t curr_search_result_;
-  std::size_t local_search_result_;
-  std::size_t total_search_results_;
-  std::vector<std::size_t> pages_with_search_results_;
-
   bool should_take_input_;
-  bool window_size_changed_;
-  bool search_pos_dirty_;
-  bool show_search_result_boxes_;
 
   sf::Vector2f window_size_;
 

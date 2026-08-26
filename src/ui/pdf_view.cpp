@@ -1,7 +1,7 @@
+#include "pdf/pdf_search_controller.h"
 #include "ui/page_view.h"
 
 #include <algorithm>
-#include <limits>
 #include <stdexcept>
 #include <utf8.h>
 
@@ -20,20 +20,14 @@ PDFView::PDFView(
     core::EventBus &event_bus
 )
     : document_(document), layout_manager_(scheduler, pages_), view_controller_(scheduler, pages_),
-      event_bus_(event_bus), file_history_(file_history), scheduler_(scheduler) {
+      search_controller_(pages_), event_bus_(event_bus), file_history_(file_history),
+      scheduler_(scheduler) {
   should_take_input_ = false;
-  window_size_changed_ = false;
-  search_pos_dirty_ = false;
-  show_search_result_boxes_ = false;
 
   layout_manager_.setAnchorPage(0);
   layout_manager_.setFrontPage(0);
   layout_manager_.setBackPage(0);
   layout_manager_.setPageWithMaxWidth(0);
-
-  curr_search_result_ = 0;
-  local_search_result_ = 0;
-  total_search_results_ = 0;
 
   event_bus_.subscribe<std::string>("cmd.open_document", [this](const std::string &filepath) {
     onOpenDocument(filepath);
@@ -97,15 +91,17 @@ void PDFView::update() {
   for (std::size_t i = front_page; i <= back_page; i++)
     pages_[i].syncPageShapePos();
 
-  if (search_pos_dirty_ && pages_[anchor_page].hasTexture()) {
+  if (search_controller_.isSearchPosDirty() && pages_[anchor_page].hasTexture()) {
     const sf::Vector2f window_center = {window_size_.x * 0.5f, window_size_.y * 0.5f};
-    const sf::Vector2f pos = pages_[anchor_page].getSearchResultPosition(local_search_result_);
+    const sf::Vector2f pos = pages_[anchor_page].getSearchResultPosition(
+        search_controller_.getLocalSearchResult()
+    );
     sf::Vector2f delta = window_center - pos;
     layout_manager_.panCurrentPage(delta);
     layout_manager_.updatePagePositions(view_state);
     for (std::size_t i = front_page; i <= back_page; i++)
       pages_[i].syncPageShapePos();
-    search_pos_dirty_ = false;
+    search_controller_.clearSearchPosDirty();
   }
 
   layout_manager_.updateAnchorPage();
@@ -117,7 +113,7 @@ void PDFView::update() {
   back_page = layout_manager_.getBackPage();
 
   for (std::size_t i = front_page; i <= back_page; i++) {
-    if (show_search_result_boxes_)
+    if (search_controller_.isShowingSearchResult())
       pages_[i].showSearchResults();
     else
       pages_[i].hideSearchResults();
@@ -160,10 +156,19 @@ void PDFView::handleEvent(const sf::Event &event) {
     } else if (key->code == sf::Keyboard::Key::J) {
       layout_manager_.panCurrentPage({0.f, -scroll_dist_});
     } else if (key->code == sf::Keyboard::Key::N) {
+      std::size_t page = -1;
+
       if (key->shift)
-        goPrevPageWithResult();
+        page = search_controller_.goPrev(layout_manager_.getAnchorPage());
       else
-        goNextPageWithResult();
+        page = search_controller_.goNext(layout_manager_.getAnchorPage());
+
+      if (page != -1)
+        onSwitchPage(page);
+
+      std::size_t curr = search_controller_.getCurrSearchResult();
+      std::size_t total = search_controller_.getTotalSearchResult();
+      event_bus_.emit("statusbar.search_state", std::make_pair(curr + 1, total));
     } else if (key->code == sf::Keyboard::Key::R) {
       if (key->shift)
         view_controller_.setRotate((view_state.rotate - 1) % 4);
@@ -187,11 +192,10 @@ void PDFView::handleEvent(const sf::Event &event) {
         event_bus_.emit("statusbar.page_zoom", view_state.zoom);
       }
     } else if (key->code == sf::Keyboard::Key::Escape) {
-      curr_search_result_ = 0;
-      total_search_results_ = 0;
-      event_bus_
-          .emit("statusbar.search_state", std::make_pair(curr_search_result_, total_search_results_));
-      show_search_result_boxes_ = false;
+      search_controller_.reset();
+      std::size_t curr = search_controller_.getCurrSearchResult();
+      std::size_t total = search_controller_.getTotalSearchResult();
+      event_bus_.emit("statusbar.search_state", std::make_pair(curr, total));
     }
   }
 }
@@ -259,59 +263,21 @@ void PDFView::onSearchPage(const std::u32string &text) {
     return;
   }
 
-  if (!document_.isAllContentLoaded())
-    document_.loadAllContent();
-
-  pages_with_search_results_.clear();
-  int closest_page = -1;
-  int closest_distance = std::numeric_limits<int>::max();
-
-  std::size_t global_start = 0;
-  for (std::size_t i = 0; i < document_.pageCount(); i++) {
-    pages_[i].clearSearchResults();
-    PDFSearchResult res;
-    res.start = global_start;
-    res.local_rects = document_.getPage(i).searchText(text);
-    global_start += res.local_rects.size();
-
-    if (!res.local_rects.empty()) {
-      pages_with_search_results_.push_back(i);
-      int distance = std::abs(
-          static_cast<int>(i) - static_cast<int>(layout_manager_.getAnchorPage())
-      );
-      if (distance < closest_distance) {
-        closest_distance = distance;
-        closest_page = static_cast<int>(i);
-      }
-    }
-
-    pages_[i].setSearchResults(std::move(res));
-  }
+  std::size_t closest_page =
+      search_controller_.search(text, layout_manager_.getAnchorPage(), document_);
+  std::size_t curr = search_controller_.getCurrSearchResult();
+  std::size_t total = search_controller_.getTotalSearchResult();
 
   if (closest_page == -1) {
-    curr_search_result_ = 0;
-    local_search_result_ = 0;
-    total_search_results_ = 0;
-    event_bus_
-        .emit("statusbar.search_state", std::make_pair(curr_search_result_, total_search_results_));
+    event_bus_.emit("statusbar.search_state", std::make_pair(curr, total));
     event_bus_.emit("notification.msg", std::string("No match found for: ") + utf8::utf32to8(text));
-    show_search_result_boxes_ = false;
     return;
   }
 
   if (closest_page != static_cast<int>(layout_manager_.getAnchorPage()))
     onSwitchPage(closest_page);
 
-  curr_search_result_ = pages_[closest_page].getSearchResults().start;
-  local_search_result_ = 0;
-  total_search_results_ = global_start;
-  pages_[closest_page].setSelectedSearchResult(local_search_result_);
-
-  event_bus_
-      .emit("statusbar.search_state", std::make_pair(curr_search_result_ + 1, total_search_results_));
-
-  search_pos_dirty_ = true;
-  show_search_result_boxes_ = true;
+  event_bus_.emit("statusbar.search_state", std::make_pair(curr + 1, total));
 }
 
 void PDFView::renderRequestedPages() {
@@ -335,80 +301,6 @@ void PDFView::renderRequestedPages() {
     view_controller_.setSyncDirty();
     layout_manager_.setPagePosDirty();
   }
-}
-
-void PDFView::goNextPageWithResult() {
-  if (total_search_results_ == 0)
-    return;
-
-  std::size_t anchor_page = layout_manager_.getAnchorPage();
-
-  pages_[anchor_page].setSelectedSearchResult(-1);
-
-  if (local_search_result_ + 1 < pages_[anchor_page].getSearchResults().local_rects.size()) {
-    curr_search_result_++;
-    local_search_result_++;
-    pages_[anchor_page].setSelectedSearchResult(local_search_result_);
-
-    event_bus_
-        .emit("statusbar.search_state", std::make_pair(curr_search_result_ + 1, total_search_results_));
-    search_pos_dirty_ = true;
-    show_search_result_boxes_ = true;
-    return;
-  }
-
-  auto it = std::
-      upper_bound(pages_with_search_results_.begin(), pages_with_search_results_.end(), static_cast<int>(anchor_page));
-  if (it == pages_with_search_results_.end())
-    it = pages_with_search_results_.begin();
-
-  curr_search_result_ = pages_[*it].getSearchResults().start;
-  local_search_result_ = 0;
-  onSwitchPage(*it);
-
-  pages_[anchor_page].setSelectedSearchResult(local_search_result_);
-  event_bus_
-      .emit("statusbar.search_state", std::make_pair(curr_search_result_ + 1, total_search_results_));
-  search_pos_dirty_ = true;
-  show_search_result_boxes_ = true;
-}
-
-void PDFView::goPrevPageWithResult() {
-  if (total_search_results_ == 0)
-    return;
-
-  std::size_t anchor_page = layout_manager_.getAnchorPage();
-
-  pages_[anchor_page].setSelectedSearchResult(-1);
-
-  if (local_search_result_ > 0) {
-    curr_search_result_--;
-    local_search_result_--;
-    pages_[anchor_page].setSelectedSearchResult(local_search_result_);
-
-    event_bus_
-        .emit("statusbar.search_state", std::make_pair(curr_search_result_ + 1, total_search_results_));
-    search_pos_dirty_ = true;
-    show_search_result_boxes_ = true;
-    return;
-  }
-
-  auto it = std::
-      lower_bound(pages_with_search_results_.begin(), pages_with_search_results_.end(), static_cast<int>(anchor_page));
-  if (it == pages_with_search_results_.begin())
-    it = pages_with_search_results_.end();
-  --it;
-
-  const std::size_t last_local = pages_[*it].getSearchResults().local_rects.size() - 1;
-  curr_search_result_ = pages_[*it].getSearchResults().start + last_local;
-  local_search_result_ = last_local;
-  onSwitchPage(*it);
-  pages_[anchor_page].setSelectedSearchResult(local_search_result_);
-
-  event_bus_
-      .emit("statusbar.search_state", std::make_pair(curr_search_result_ + 1, total_search_results_));
-  search_pos_dirty_ = true;
-  show_search_result_boxes_ = true;
 }
 
 void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
@@ -462,7 +354,7 @@ void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
       continue;
 
     scheduler_.request(key);
-    if (show_search_result_boxes_)
+    if (search_controller_.isShowingSearchResult())
       pages_[i].showSearchResults();
   }
 
@@ -480,8 +372,6 @@ void PDFView::resetView() {
     pages_[i].setPageShapeSize({width, height});
   }
 
-  window_size_changed_ = false;
-
   layout_manager_.setPageWithMaxWidth(0);
   layout_manager_.setFrontPage(0);
   layout_manager_.setAnchorPage(0);
@@ -490,6 +380,8 @@ void PDFView::resetView() {
   view_controller_.setZoom(1.f);
   view_controller_.setRotate(0);
   view_controller_.clearSyncDirty();
+
+  search_controller_.reset();
 }
 
 } // namespace ui
