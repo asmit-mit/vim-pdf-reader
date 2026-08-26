@@ -28,6 +28,7 @@ sources = files(
   'src/pdf/pdf_page.cpp',
   'src/pdf/pdf_renderer.cpp',
   'src/pdf/pdf_layout_manager.cpp',
+  'src/pdf/pdf_view_controller.cpp',
   'src/ui/cmdline.cpp',
   'src/ui/completions.cpp',
   'src/ui/cursor.cpp',
