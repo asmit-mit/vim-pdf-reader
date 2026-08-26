@@ -12,6 +12,7 @@ PDFLayoutManager::PDFLayoutManager(
   anchor_page_pos_before_scroll_ = {0.f, 0.f};
   anchor_page_changed_ = false;
   need_initial_pos_ = false;
+  scrolled_ = false;
 }
 
 void PDFLayoutManager::setAnchorPage(std::size_t idx) {
@@ -122,6 +123,10 @@ void PDFLayoutManager::updatePagePositions(const ui::VisualInfo &visual_state) {
   updateNeighbourPositions();
 
   page_positions_dirty_ = false;
+}
+
+bool PDFLayoutManager::needInitialPos() const {
+  return need_initial_pos_;
 }
 
 bool PDFLayoutManager::anchorPageChanged() const {

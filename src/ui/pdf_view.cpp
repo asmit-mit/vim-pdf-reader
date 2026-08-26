@@ -61,6 +61,9 @@ void PDFView::draw(sf::RenderTarget &window) const {
   if (!document_.isOpen())
     return;
 
+  if (layout_manager_.needInitialPos())
+    return;
+
   for (std::size_t i = layout_manager_.getFrontPage(); i <= layout_manager_.getBackPage(); i++)
     pages_[i].draw(window);
 }
@@ -105,9 +108,12 @@ void PDFView::update() {
   }
 
   layout_manager_.updateAnchorPage();
-  if (layout_manager_.anchorPageChanged())
-    event_bus_
-        .emit("statusbar.page_state", std::make_pair(layout_manager_.getAnchorPage() + 1, document_.pageCount()));
+  anchor_page = layout_manager_.getAnchorPage();
+
+  if (layout_manager_.anchorPageChanged()) {
+    requestPage(anchor_page, view_state.zoom, view_state.rotate);
+    event_bus_.emit("statusbar.page_state", std::make_pair(anchor_page + 1, document_.pageCount()));
+  }
 
   front_page = layout_manager_.getFrontPage();
   back_page = layout_manager_.getBackPage();

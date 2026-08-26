@@ -30,6 +30,7 @@ public:
   void panCurrentPage(sf::Vector2f delta);
   void updatePagePositions(const ui::VisualInfo &visual_state);
 
+  bool needInitialPos() const;
   bool anchorPageChanged() const;
   void updateAnchorPage();
 

@@ -14,6 +14,15 @@ namespace pdf {
 
 using FzContextPtr = std::unique_ptr<fz_context, decltype(&fz_drop_context)>;
 
+struct OutlineEntry {
+  std::string index;
+  std::string title;
+  int page;
+
+  OutlineEntry(std::string index, std::string title, int page)
+      : index(std::move(index)), title(std::move(title)), page(page) {}
+};
+
 class PDFDocument {
 public:
   PDFDocument();
@@ -25,7 +34,9 @@ public:
   void openDocument(const std::string &filepath);
   void closeDocument();
   void reloadDocument();
+
   PDFPage &getPage(std::size_t page_idx);
+  const std::vector<OutlineEntry> &getOutline() const;
 
   bool isOpen() const;
   bool isAllContentLoaded() const;
@@ -42,12 +53,15 @@ private:
   static void lockMutex(void *user, int lock);
   static void unlockMutex(void *user, int lock);
 
+  void loadOutline();
+
 private:
   std::array<std::mutex, FZ_LOCK_MAX> mutexes_;
   fz_locks_context locks_;
 
   std::string filepath_;
 
+  std::vector<OutlineEntry> outline_;
   std::vector<pdf::PDFPage> pages_;
   std::size_t page_with_max_width_;
 

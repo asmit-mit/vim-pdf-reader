@@ -65,6 +65,7 @@ void PDFDocument::openDocument(const std::string &filepath) {
   }
 
   filepath_ = filepath;
+  loadOutline();
 }
 
 void PDFDocument::closeDocument() {
@@ -91,6 +92,10 @@ std::size_t PDFDocument::pageWithMaxWidth() const {
 
 PDFPage &PDFDocument::getPage(std::size_t page_idx) {
   return pages_[page_idx];
+}
+
+const std::vector<OutlineEntry> &PDFDocument::getOutline() const {
+  return outline_;
 }
 
 bool PDFDocument::isOpen() const {
@@ -147,6 +152,47 @@ void PDFDocument::lockMutex(void *user, int lock) {
 
 void PDFDocument::unlockMutex(void *user, int lock) {
   static_cast<PDFDocument *>(user)->mutexes_[lock].unlock();
+}
+
+void PDFDocument::loadOutline() {
+  outline_.clear();
+  fz_outline *root = nullptr;
+
+  fz_try(ctx_) root = fz_load_outline(ctx_, doc_);
+  fz_catch(ctx_) return;
+
+  if (!root)
+    return;
+
+  std::vector<int> counters;
+
+  std::function<void(fz_outline *, int)> walk = [&](fz_outline *node, int depth) {
+    if (depth >= static_cast<int>(counters.size()))
+      counters.resize(depth + 1, 0);
+    counters.resize(depth + 1);
+
+    while (node) {
+      counters[depth]++;
+
+      std::string index;
+      for (int i = 0; i <= depth; i++) {
+        if (i > 0)
+          index += '.';
+        index += std::to_string(counters[i]);
+      }
+
+      int page_num = fz_page_number_from_location(ctx_, doc_, node->page);
+      outline_.emplace_back(index, node->title ? node->title : "(untitled)", page_num);
+
+      if (node->down)
+        walk(node->down, depth + 1);
+
+      node = node->next;
+    }
+  };
+
+  walk(root, 0);
+  fz_drop_outline(ctx_, root);
 }
 
 } // namespace pdf
