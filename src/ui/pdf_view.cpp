@@ -126,9 +126,24 @@ void PDFView::handleEvent(const sf::Event &event) {
     return;
 
   const auto *key = event.getIf<sf::Event::KeyPressed>();
+  const auto *scroll = event.getIf<sf::Event::MouseWheelScrolled>();
 
   std::size_t anchor_page = layout_manager_.getAnchorPage();
   const VisualInfo view_state = view_controller_.getState();
+
+  if (scroll && should_take_input_) {
+    if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
+      if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl) ||
+          sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RControl)) {
+        view_controller_.setZoom(view_state.zoom + scroll->delta * settings::delta_zoom_);
+        event_bus_.emit("statusbar.page_zoom", view_controller_.getState().zoom);
+      } else {
+        layout_manager_.panCurrentPage({0.f, scroll->delta * scroll_dist_});
+      }
+    } else if (scroll->wheel == sf::Mouse::Wheel::Horizontal) {
+      layout_manager_.panCurrentPage({scroll->delta * scroll_dist_, 0.f});
+    }
+  }
 
   if (key && should_take_input_) {
     if (key->code == sf::Keyboard::Key::U) {
@@ -290,7 +305,7 @@ void PDFView::onSearchPage(const std::u32string &text) {
 }
 
 void PDFView::renderRequestedPages() {
-  VisualInfo view_state = view_controller_.getState();
+  const VisualInfo view_state = view_controller_.getState();
   for (std::size_t i = layout_manager_.getFrontPage(); i <= layout_manager_.getBackPage(); i++) {
     pdf::PDFRenderKey target_key = {i, view_state.zoom, view_state.rotate};
     if (!scheduler_.isReady(target_key))
