@@ -24,9 +24,11 @@ public:
 
   void openDocument(const std::string &filepath);
   void closeDocument();
+  void reloadDocument();
   PDFPage &getPage(std::size_t page_idx);
 
-  bool isAllContentLoaded();
+  bool isOpen() const;
+  bool isAllContentLoaded() const;
   void loadAllContent();
   void loadPageContent(std::size_t idx);
 
@@ -44,11 +46,14 @@ private:
   std::array<std::mutex, FZ_LOCK_MAX> mutexes_;
   fz_locks_context locks_;
 
+  std::string filepath_;
+
   std::vector<pdf::PDFPage> pages_;
   std::size_t page_with_max_width_;
 
   fz_context *ctx_;
   fz_document *doc_;
+
   bool all_content_loaded_;
 };
 

@@ -21,7 +21,6 @@ PDFView::PDFView(
 )
     : document_(document), layout_manager_(scheduler, pages_), view_controller_(scheduler, pages_),
       event_bus_(event_bus), file_history_(file_history), scheduler_(scheduler) {
-  has_document_ = false;
   should_take_input_ = false;
   window_size_changed_ = false;
   search_pos_dirty_ = false;
@@ -41,12 +40,12 @@ PDFView::PDFView(
   });
 
   event_bus_.subscribe<bool>("cmd.reload_document", [this](bool) {
-    if (!has_document_) {
+    if (!document_.isOpen()) {
       event_bus_.emit("notification.msg", std::string("No document open to reload"));
       return;
     }
 
-    onOpenDocument(filepath_);
+    document_.reloadDocument();
   });
 
   event_bus_.subscribe<bool>("cmd.close_document", [this](bool) { onCloseDocument(); });
@@ -65,7 +64,7 @@ PDFView::PDFView(
 }
 
 void PDFView::draw(sf::RenderTarget &window) const {
-  if (!has_document_)
+  if (!document_.isOpen())
     return;
 
   for (std::size_t i = layout_manager_.getFrontPage(); i <= layout_manager_.getBackPage(); i++)
@@ -73,7 +72,7 @@ void PDFView::draw(sf::RenderTarget &window) const {
 }
 
 void PDFView::update() {
-  if (!has_document_)
+  if (!document_.isOpen())
     return;
 
   std::size_t front_page = layout_manager_.getFrontPage();
@@ -81,7 +80,7 @@ void PDFView::update() {
   std::size_t back_page = layout_manager_.getBackPage();
   const VisualInfo view_state = view_controller_.getState();
 
-  if (has_document_ && view_controller_.canUpdatePages()) {
+  if (document_.isOpen() && view_controller_.canUpdatePages()) {
     requestPage(layout_manager_.getAnchorPage(), view_state.zoom, view_state.rotate);
     view_controller_.clearPendingUpdates();
   }
@@ -127,7 +126,7 @@ void PDFView::update() {
 }
 
 void PDFView::handleEvent(const sf::Event &event) {
-  if (!has_document_)
+  if (!document_.isOpen())
     return;
 
   const auto *key = event.getIf<sf::Event::KeyPressed>();
@@ -198,8 +197,8 @@ void PDFView::handleEvent(const sf::Event &event) {
 }
 
 void PDFView::onResize(const sf::Vector2f &size) {
-  old_window_size_ = window_size_;
   window_size_ = size;
+  view_controller_.setWindowSize(size);
   layout_manager_.setWindowSize(size);
 }
 
@@ -208,11 +207,9 @@ void PDFView::onOpenDocument(const std::string &filepath) {
     std::string absolute_path = utils::resolvePath(filepath);
     scheduler_.quiesce();
     document_.openDocument(absolute_path);
-    filepath_ = filepath;
     scheduler_.clearCache();
     scheduler_.resume();
 
-    has_document_ = true;
     resetView();
     onSwitchPage(0);
     layout_manager_.setPageWithMaxWidth(document_.pageWithMaxWidth());
@@ -229,9 +226,9 @@ void PDFView::onOpenDocument(const std::string &filepath) {
 }
 
 void PDFView::onCloseDocument() {
-  if (!has_document_)
+  if (!document_.isOpen())
     return;
-  has_document_ = false;
+
   resetView();
   document_.closeDocument();
   event_bus_.emit("statusbar.pdf_path", std::string("[No document open]"));
@@ -239,7 +236,7 @@ void PDFView::onCloseDocument() {
 }
 
 void PDFView::onSwitchPage(int page_idx) {
-  if (!has_document_) {
+  if (!document_.isOpen()) {
     event_bus_.emit("notification.msg", std::string("No document currently open"));
     return;
   }
@@ -257,10 +254,11 @@ void PDFView::onSwitchPage(int page_idx) {
 }
 
 void PDFView::onSearchPage(const std::u32string &text) {
-  if (!has_document_) {
+  if (!document_.isOpen()) {
     event_bus_.emit("notification.msg", std::string("No document open to search"));
     return;
   }
+
   if (!document_.isAllContentLoaded())
     document_.loadAllContent();
 
@@ -414,7 +412,7 @@ void PDFView::goPrevPageWithResult() {
 }
 
 void PDFView::requestPage(std::size_t page_idx, float zoom, int rotate) {
-  if (!has_document_)
+  if (!document_.isOpen())
     return;
 
   pdf::PDFRenderKey center_key{page_idx, zoom, rotate};

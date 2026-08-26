@@ -58,16 +58,12 @@ private:
   std::size_t total_search_results_;
   std::vector<std::size_t> pages_with_search_results_;
 
-  bool has_document_;
   bool should_take_input_;
   bool window_size_changed_;
   bool search_pos_dirty_;
   bool show_search_result_boxes_;
 
-  sf::Vector2f old_window_size_;
   sf::Vector2f window_size_;
-
-  std::string filepath_;
 
   static constexpr float scrollwheel_width_ = 8.f;
   static constexpr float scroll_dist_ = 40.f;
