@@ -1,4 +1,3 @@
-#include <sstream>
 #include <stdexcept>
 #include <utf8.h>
 #include <vector>
@@ -63,9 +62,26 @@ void CmdProcessor::runCommand(const std::string &cmd) {
 }
 
 void CmdProcessor::tokenize(const std::string &cmd, std::vector<std::string> &argv) {
-  std::istringstream iss(cmd);
   std::string token;
-  while (iss >> token)
+  bool escaping = false;
+
+  for (char ch : cmd) {
+    if (escaping) {
+      token += ch;
+      escaping = false;
+    } else if (ch == '\\') {
+      escaping = true;
+    } else if (std::isspace(ch)) {
+      if (!token.empty()) {
+        argv.push_back(token);
+        token.clear();
+      }
+    } else {
+      token += ch;
+    }
+  }
+
+  if (!token.empty())
     argv.push_back(token);
 }
 

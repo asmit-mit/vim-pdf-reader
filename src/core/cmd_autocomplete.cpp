@@ -1,6 +1,5 @@
 #include "core/cmd_autocomplete.h"
 
-#include <sstream>
 #include <stdexcept>
 #include <utf8.h>
 
@@ -19,13 +18,22 @@ std::vector<CmdAutocompleteItem> CmdAutocomplete::complete(const std::string &pr
   std::vector<std::string> argv;
   tokenize(prefix, argv);
 
+  auto trailingSpaceIsDelimiter = [](const std::string &s) -> bool {
+    if (s.empty() || s.back() != ' ')
+      return false;
+    int backslashes = 0;
+    for (int i = (int)s.size() - 2; i >= 0 && s[i] == '\\'; --i)
+      ++backslashes;
+    return backslashes % 2 == 0;
+  };
+
   if (argv.empty()) {
     for (const Cmd *cmd : cmd_loader_.getRootCmds())
       push(cmd, cmd->name + " ", res);
     return res;
   }
 
-  if (argv.size() == 1 && !prefix.ends_with(' ')) {
+  if (argv.size() == 1 && !trailingSpaceIsDelimiter(prefix)) {
     for (const std::string &name : trie_.complete(argv[0]))
       if (const Cmd *cmd = cmd_loader_.find(name))
         push(cmd, cmd->name + " ", res);
@@ -35,7 +43,7 @@ std::vector<CmdAutocompleteItem> CmdAutocomplete::complete(const std::string &pr
   std::vector<std::string> confirmed;
   std::string typing;
 
-  if (prefix.ends_with(' ')) {
+  if (trailingSpaceIsDelimiter(prefix)) {
     confirmed = argv;
     typing = "";
   } else {
@@ -66,9 +74,26 @@ std::vector<CmdAutocompleteItem> CmdAutocomplete::complete(const std::string &pr
 }
 
 void CmdAutocomplete::tokenize(const std::string &input, std::vector<std::string> &argv) {
-  std::istringstream iss(input);
   std::string token;
-  while (iss >> token)
+  bool escaping = false;
+
+  for (char ch : input) {
+    if (escaping) {
+      token += ch;
+      escaping = false;
+    } else if (ch == '\\') {
+      escaping = true;
+    } else if (std::isspace(ch)) {
+      if (!token.empty()) {
+        argv.push_back(token);
+        token.clear();
+      }
+    } else {
+      token += ch;
+    }
+  }
+
+  if (!token.empty())
     argv.push_back(token);
 }
 
@@ -101,13 +126,23 @@ void CmdAutocomplete::getFileCmp(
     const std::string &typing,
     std::vector<CmdAutocompleteItem> &results
 ) {
+  auto escapeSpaces = [](const std::string &s) {
+    std::string res;
+    for (char c : s) {
+      if (c == ' ')
+        res += '\\';
+      res += c;
+    }
+    return res;
+  };
+
   std::string resolved = utils::resolvePath(typing);
   std::string top_cmd = scoped_key;
   std::replace(top_cmd.begin(), top_cmd.end(), '.', ' ');
 
   if (typing.empty()) {
     for (const auto &file : file_history_.getAllUnique())
-      results.push_back({file, top_cmd + " " + file, ""});
+      results.push_back({file, top_cmd + " " + escapeSpaces(file), ""});
     return;
   }
 
@@ -128,10 +163,10 @@ void CmdAutocomplete::getFileCmp(
     if (name.starts_with(prefix)) {
       if (entry.is_directory()) {
         std::string file = dir + name + '/';
-        results.push_back({file, top_cmd + " " + file, ""});
+        results.push_back({file, top_cmd + " " + escapeSpaces(file), ""});
       } else if (entry.path().extension() == ".pdf") {
         std::string file = dir + name;
-        results.push_back({file, top_cmd + " " + file, ""});
+        results.push_back({file, top_cmd + " " + escapeSpaces(file), ""});
       }
     }
   }
